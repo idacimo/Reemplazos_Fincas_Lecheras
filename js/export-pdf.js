@@ -256,7 +256,7 @@ async function exportPdf(rep, fileName, loadScript){
     'Costo anual del levante = Σ inventario de la etapa × costo diario × 365.'
   ].forEach(t => { para('•  ' + t, 8.2, C.navy); y += 0.6; });
   y += 2;
-  para('Herramienta de apoyo a la decisión. No reemplaza el criterio del médico veterinario o del zootecnista.', 8, C.muted, 'normal');
+  para('Herramienta de apoyo a la decisión. No reemplaza el criterio del médico veterinario o del zootecnista. Este informe se generó en el dispositivo del usuario: Datavet no recibe ni guarda los datos de la finca.', 8, C.muted, 'normal');
 
   /* ---------- encabezado (páginas 2+) y pie en todas ---------- */
   const n = doc.getNumberOfPages();

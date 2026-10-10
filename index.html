@@ -51,6 +51,7 @@
     <div class="card">
       <label class="q" for="s-finca">Nombre de la finca <small>(opcional)</small></label>
       <input class="txt" id="s-finca" data-bind="finca" autocomplete="off" placeholder="Ej. La Esperanza">
+      <p class="hint" style="margin:8px 0 0">Solo aparece en su PDF y su Excel. No sale de su celular.</p>
     </div>
     <div class="card">
       <span class="q" id="q-raza">Raza principal del hato</span>
@@ -265,6 +266,18 @@
   </section>
   </div>
 </div>
+
+<section class="privacy" aria-labelledby="priv-h">
+  <h2 id="priv-h"><span aria-hidden="true">🔒</span> Sus datos son privados</h2>
+  <ul>
+    <li>Todos los cálculos se hacen <b>en su celular o computador</b>. Los datos de su finca <b>no se envían a internet</b> y Datavet no los recibe ni los guarda.</li>
+    <li>Los archivos PDF y Excel se crean en su equipo y se descargan directamente a él.</li>
+    <li>La página recuerda sus últimos datos <b>solo en este dispositivo</b>, para que no los pierda si la cierra. Puede borrarlos cuando quiera.</li>
+    <li>No se piden datos personales. El nombre de la finca es opcional y solo aparece en sus descargas.</li>
+    <li>Para saber cuántas personas usan la calculadora, se cuentan de forma <b>anónima</b> las visitas y las descargas de PDF y Excel (con GoatCounter, sin <i>cookies</i>). Ese conteo <b>no incluye ningún dato de la finca</b> ni datos personales.</li>
+  </ul>
+  <button type="button" class="btn ghost" id="wipe">Borrar mis datos de este dispositivo</button>
+</section>
 
 <footer class="foot">
   <img src="assets/isotipo-datavet.png" alt="" width="40" height="40">
