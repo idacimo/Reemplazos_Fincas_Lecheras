@@ -553,6 +553,14 @@ function bind(){
   }));
   $('#reset').addEventListener('click', () => { S = clone(DEF); real = ['', '', '', '', '']; fillFull(); render(); toast('Se restablecieron los valores de ejemplo.'); });
   $('#fecha').addEventListener('input', render);
+  $('#wipe').addEventListener('click', () => {
+    if (!confirm('¿Borrar los datos guardados en este dispositivo? La calculadora volverá a los valores de ejemplo.')) return;
+    try { localStorage.removeItem(STORE); } catch (e) { /* sin almacenamiento */ }
+    S = clone(DEF); real = ['', '', '', '', '']; finca = '';
+    if (mode === 'full') fillFull(); else { fillSimple(); goStep(1, false); }
+    render();
+    toast('Se borraron los datos de este dispositivo.');
+  });
 }
 
 /* ---------- inicio ---------- */

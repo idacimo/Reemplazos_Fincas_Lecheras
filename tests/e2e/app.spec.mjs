@@ -73,3 +73,14 @@ test('modo completo: conversión de moneda y suma de etapas', async ({ page }) =
   await expect(page.locator('[data-c="c1"]')).toHaveValue('3,9');
   await expect(page.locator('#cs0')).toContainText('US$');
 });
+
+test('privacidad: borrar los datos guardados en el dispositivo', async ({ page }) => {
+  await page.fill('#s-finca', 'Finca Prueba');
+  await page.fill('#s-M', '250');
+  expect(await page.evaluate(() => localStorage.getItem('datavet-reemplazos-v2'))).toContain('Finca Prueba');
+  page.once('dialog', d => d.accept());
+  await page.click('#wipe');
+  await expect(page.locator('#s-finca')).toHaveValue('');
+  await expect(page.locator('#s-M')).toHaveValue('100');
+  expect(await page.evaluate(() => localStorage.getItem('datavet-reemplazos-v2'))).not.toContain('Finca Prueba');
+});

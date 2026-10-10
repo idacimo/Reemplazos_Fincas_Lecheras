@@ -16,6 +16,14 @@ ivan.cifuentes@datavet.info · idacimo@gmail.com · WhatsApp (+57) 315 501 0037
 
 Ambos modos comparten los mismos datos: se puede empezar en Rápido y pasar a Completo sin perder nada. El enlace `…/#completo` abre directamente el modo completo. Los datos se guardan solo en el celular o computador de quien usa la página (no se envían a ningún servidor).
 
+## Privacidad
+
+- Todos los cálculos se hacen en el navegador de quien usa la página. Los datos de la finca no se envían a ningún servidor; Datavet no los recibe ni los guarda.
+- El PDF y el Excel se generan en el dispositivo y se descargan directamente.
+- La página recuerda los últimos datos solo en ese dispositivo (almacenamiento local del navegador). El botón «Borrar mis datos de este dispositivo» los elimina.
+- No se piden datos personales; el nombre de la finca es opcional y solo aparece en las descargas.
+- Si más adelante se agrega un contador de uso, debe contar solo eventos anónimos (visitas, descargas) sin ningún dato de la finca, y este aviso debe actualizarse.
+
 ## Estructura
 
 ```
