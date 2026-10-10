@@ -1,0 +1,284 @@
+<!DOCTYPE html>
+<html lang="es-CO">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Plan de reemplazos | Datavet</title>
+<meta name="description" content="Calcule cuántas terneras y novillas necesita su finca lechera para sostener el hato, compare su situación con la meta y descargue el plan en Excel o PDF. Herramienta gratuita de Datavet.">
+<meta name="author" content="Iván Darío Cifuentes Moreno · Datavet">
+<meta name="theme-color" content="#07193F">
+<meta property="og:type" content="website">
+<meta property="og:locale" content="es_CO">
+<meta property="og:site_name" content="Datavet">
+<meta property="og:title" content="Plan de reemplazos del hato lechero | Datavet">
+<meta property="og:description" content="¿Cuántas terneras y novillas necesita su finca? Calcúlelo en 3 pasos y descargue su plan en Excel o PDF.">
+<meta property="og:image" content="https://idacimo.github.io/Reemplazos_Fincas_Lecheras/assets/og-image.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="icon" type="image/png" sizes="48x48" href="assets/favicon.png">
+<link rel="apple-touch-icon" href="assets/apple-touch-icon.png">
+<link rel="stylesheet" href="css/app.css">
+</head>
+<body data-mode="simple">
+<a class="skip" href="#contenido">Ir al contenido</a>
+
+<header class="top">
+  <img class="mark" src="assets/logo-datavet-negativo.png" alt="Datavet" width="520" height="176">
+  <div class="top-title">
+    <h1>Plan de reemplazos del hato lechero</h1>
+    <p>¿Cuántas terneras y novillas necesita su finca?</p>
+  </div>
+  <div class="modes" role="group" aria-label="Tipo de cálculo">
+    <button type="button" data-mode="simple" aria-pressed="true">Rápido</button>
+    <button type="button" data-mode="full" aria-pressed="false">Completo</button>
+  </div>
+</header>
+
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+<!-- ===================== MODO RÁPIDO ===================== -->
+<main id="contenido" class="simple" data-view="simple">
+  <ol class="steps" aria-label="Pasos">
+    <li data-step="1" aria-current="step"><span>1</span>Su finca</li>
+    <li data-step="2"><span>2</span>Su hato</li>
+    <li data-step="3"><span>3</span>Resultados</li>
+  </ol>
+
+  <!-- Paso 1 -->
+  <section class="step" data-step="1">
+    <h2 class="step-h">Datos de la finca</h2>
+    <div class="card">
+      <label class="q" for="s-finca">Nombre de la finca <small>(opcional)</small></label>
+      <input class="txt" id="s-finca" data-bind="finca" autocomplete="off" placeholder="Ej. La Esperanza">
+    </div>
+    <div class="card">
+      <span class="q" id="q-raza">Raza principal del hato</span>
+      <div class="chips" role="radiogroup" aria-labelledby="q-raza" id="s-raza">
+        <button type="button" role="radio" data-raza="Holstein">Holstein</button>
+        <button type="button" role="radio" data-raza="Jersey">Jersey</button>
+        <button type="button" role="radio" data-raza="Otra">Otra o cruce</button>
+      </div>
+    </div>
+    <div class="card">
+      <label class="q" for="s-M">¿Cuántas vacas está ordeñando hoy?</label>
+      <div class="stepper" data-k="M" data-step="1" data-min="1" data-max="20000">
+        <button type="button" class="minus" aria-label="Restar">−</button>
+        <input id="s-M" inputmode="numeric" autocomplete="off">
+        <button type="button" class="plus" aria-label="Sumar">+</button>
+        <span class="unit">vacas</span>
+      </div>
+    </div>
+    <div class="nav"><button type="button" class="btn big" data-go="2">Siguiente</button></div>
+  </section>
+
+  <!-- Paso 2 -->
+  <section class="step" data-step="2" hidden>
+    <h2 class="step-h">¿Cómo está su hato hoy?</h2>
+    <p class="hint-top">Si no conoce un dato exacto, deje el valor que aparece: es un valor típico de fincas lecheras.</p>
+    <div class="card">
+      <label class="q" for="s-IEP">¿Cada cuánto pare una vaca, en promedio?</label>
+      <p class="hint">Intervalo entre partos. Lo ideal es 13,5 meses o menos.</p>
+      <div class="stepper" data-k="IEP" data-step="0.5" data-min="11" data-max="24">
+        <button type="button" class="minus" aria-label="Restar">−</button>
+        <input id="s-IEP" inputmode="decimal" autocomplete="off">
+        <button type="button" class="plus" aria-label="Sumar">+</button>
+        <span class="unit">meses</span>
+      </div>
+    </div>
+    <div class="card">
+      <label class="q" for="s-EPP">¿A qué edad paren las novillas por primera vez?</label>
+      <p class="hint" id="h-EPP">Edad al primer parto. En Holstein lo ideal es entre 22 y 24 meses.</p>
+      <div class="stepper" data-k="EPP" data-step="1" data-min="18" data-max="40">
+        <button type="button" class="minus" aria-label="Restar">−</button>
+        <input id="s-EPP" inputmode="decimal" autocomplete="off">
+        <button type="button" class="plus" aria-label="Sumar">+</button>
+        <span class="unit">meses</span>
+      </div>
+    </div>
+    <div class="card">
+      <label class="q" for="s-TD">De cada 100 vacas, ¿cuántas salen del hato al año?</label>
+      <p class="hint">Por venta, descarte o muerte. Lo usual es entre 25 y 35.</p>
+      <div class="stepper" data-k="TD" data-step="1" data-min="0" data-max="99">
+        <button type="button" class="minus" aria-label="Restar">−</button>
+        <input id="s-TD" inputmode="decimal" autocomplete="off">
+        <button type="button" class="plus" aria-label="Sumar">+</button>
+        <span class="unit">de 100</span>
+      </div>
+    </div>
+    <div class="card">
+      <label class="q" for="s-p1">De cada 100 terneras, ¿cuántas se mueren antes del destete?</label>
+      <p class="hint">Lo ideal es 5 o menos.</p>
+      <div class="stepper" data-k="p1" data-step="1" data-min="0" data-max="99">
+        <button type="button" class="minus" aria-label="Restar">−</button>
+        <input id="s-p1" inputmode="decimal" autocomplete="off">
+        <button type="button" class="plus" aria-label="Sumar">+</button>
+        <span class="unit">de 100</span>
+      </div>
+    </div>
+    <div class="card">
+      <span class="q">¿Qué semen usa? <small>De cada 100 preñeces</small></span>
+      <div class="pair">
+        <div>
+          <label class="q2" for="s-sx">Con semen sexado</label>
+          <div class="stepper" data-k="sx" data-step="5" data-min="0" data-max="100">
+            <button type="button" class="minus" aria-label="Restar">−</button>
+            <input id="s-sx" inputmode="decimal" autocomplete="off">
+            <button type="button" class="plus" aria-label="Sumar">+</button>
+          </div>
+        </div>
+        <div>
+          <label class="q2" for="s-cb">Con semen de carne</label>
+          <div class="stepper" data-k="cb" data-step="5" data-min="0" data-max="100">
+            <button type="button" class="minus" aria-label="Restar">−</button>
+            <input id="s-cb" inputmode="decimal" autocomplete="off">
+            <button type="button" class="plus" aria-label="Sumar">+</button>
+          </div>
+        </div>
+      </div>
+      <p class="hint" id="s-conv"></p>
+    </div>
+    <details class="card opt" id="s-inv">
+      <summary><span class="q">¿Cuántas hembras de levante tiene hoy?</span> <small>Opcional: para saber si le sobran o le faltan</small></summary>
+      <div class="inv-grid" id="s-inv-grid"></div>
+    </details>
+    <div class="errs" id="s-errs"></div>
+    <div class="nav">
+      <button type="button" class="btn ghost big" data-go="1">Atrás</button>
+      <button type="button" class="btn big" data-go="3">Ver resultados</button>
+    </div>
+  </section>
+
+  <!-- Paso 3 -->
+  <section class="step" data-step="3" hidden>
+    <div id="s-result"></div>
+    <div class="dl">
+      <button type="button" class="btn big" data-action="pdf">Descargar PDF</button>
+      <button type="button" class="btn big alt" data-action="xlsx">Descargar Excel</button>
+    </div>
+    <div class="nav">
+      <button type="button" class="btn ghost big" data-go="2">Cambiar datos</button>
+      <button type="button" class="btn ghost big" data-mode-go="full">Ver análisis completo</button>
+    </div>
+  </section>
+
+  <p class="disclaimer">Herramienta de apoyo a la decisión. No reemplaza el criterio del médico veterinario o del zootecnista.</p>
+</main>
+
+<!-- ===================== MODO COMPLETO ===================== -->
+<div class="full" data-view="full" hidden>
+  <div class="full-bar">
+    <label>Finca<input id="finca" data-bind="finca" autocomplete="off" placeholder="Nombre de la finca"></label>
+    <label>Fecha<input id="fecha" type="date"></label>
+    <div class="actions">
+      <button class="btn ghost" id="reset" type="button">Restablecer ejemplo</button>
+      <button class="btn ghost" type="button" data-action="print">Imprimir</button>
+      <button class="btn alt" type="button" data-action="xlsx">Descargar Excel</button>
+      <button class="btn" type="button" data-action="pdf">Descargar PDF</button>
+    </div>
+  </div>
+
+  <div class="layout">
+  <aside aria-label="Parámetros">
+    <table class="params" id="params">
+      <caption class="sr">Parámetros de los escenarios actual y meta</caption>
+      <thead><tr><th scope="col">Parámetro</th><th scope="col" class="ca">Actual</th><th scope="col" class="cm">Meta</th></tr></thead>
+      <tbody></tbody>
+    </table>
+    <table class="params shared" id="costs">
+      <caption class="sr">Costos del levante</caption>
+      <tbody></tbody>
+    </table>
+    <p class="aside-note">Los valores de Meta son los del escenario de referencia (100 vacas en ordeño, Holstein). Los costos de ejemplo están en pesos colombianos ($), calculados con una TRM de $3.200 por dólar. Para usar otra moneda, elíjala, escriba cuánto vale 1 USD en ella y pulse Convertir; o escriba directamente los costos de su finca. Puede escribir los números con punto de miles y coma decimal (15.000 o 3,90).</p>
+  </aside>
+
+  <section class="report" aria-label="Resultados">
+    <div class="print-head" aria-hidden="true">
+      <img src="assets/logo-datavet.png" alt="" width="640" height="159">
+      <div><b>Plan de reemplazos del hato lechero</b><span id="printMeta"></span></div>
+    </div>
+
+    <p class="lead" id="lead"></p>
+    <p class="sub" id="sub"></p>
+    <div id="errors"></div>
+
+    <div class="block">
+      <div class="viewbar noprint"><span>Tubería de levante</span>
+        <div class="seg" role="group" aria-label="Escenario en la gráfica">
+          <button type="button" data-v="a" aria-pressed="true">Actual</button>
+          <button type="button" data-v="m" aria-pressed="false">Meta</button>
+        </div>
+      </div>
+      <div class="pipe"><svg id="pipe" viewBox="0 0 960 280" role="img" aria-label="Inventario de novillas por etapa de levante"></svg></div>
+      <div class="legend" id="legend"></div>
+      <p class="note">El área de cada tramo equivale a las novillas que hay en esa etapa: el largo es la duración en meses y el alto, las terneras de cada cohorte anual que siguen en el levante. La línea punteada es el otro escenario.</p>
+    </div>
+
+    <section class="block">
+      <h2>Resumen del plan</h2>
+      <div class="tbl-wrap"><table class="data" id="sum"></table></div>
+    </section>
+
+    <section class="block">
+      <h2>Terneras disponibles y estrategia de semen</h2>
+      <div class="semen" id="semen"></div>
+    </section>
+
+    <section class="block">
+      <h2>Inventario por etapa</h2>
+      <p class="note noprint">Escriba cuántas novillas hay hoy en cada etapa. La tabla las compara con lo que requiere el escenario actual y, sobre todo, con la meta que se quiere alcanzar.</p>
+      <div class="tbl-wrap"><table class="data" id="stages"></table></div>
+      <p class="note" id="stagesNote"></p>
+    </section>
+
+    <section class="block">
+      <h2>Diagnóstico frente a referencias</h2>
+      <div class="tbl-wrap"><table class="data" id="diag"></table></div>
+      <p class="note"><span class="dot g"></span>Dentro de la referencia <span class="dot y ml"></span>Requiere atención <span class="dot r ml"></span>Crítico</p>
+    </section>
+
+    <section class="block print-params">
+      <h2>Parámetros usados</h2>
+      <div class="tbl-wrap"><table class="data" id="paramsPrint"></table></div>
+    </section>
+
+    <section class="block guide-block">
+      <h2>¿A qué período corresponde cada etapa?</h2>
+      <div id="stageGuide"></div>
+    </section>
+
+    <section class="block method">
+      <h2>Cómo calcula</h2>
+      <ul>
+        <li><b>Vacas adultas totales</b> = vacas en ordeño ÷ proporción en ordeño, con proporción = (IEP × 30,4 − días secos) ÷ (IEP × 30,4).</li>
+        <li><b>Novillas paridas necesarias por año</b> = vacas totales × tasa de descarte anual (incluye muertes).</li>
+        <li><b>Terneras vivas a criar por año</b> = novillas necesarias ÷ supervivencia acumulada, que es el producto de la supervivencia de las cinco etapas.</li>
+        <li><b>Inventario de cada etapa</b> = terneras que entran a la etapa × duración en años × supervivencia media de la etapa. La gestación se fija en 9 meses, así que la etapa de servicio dura EPP − 9 − edad al primer servicio.</li>
+        <li><b>Terneras hembras nacidas vivas</b> = vacas totales × 12 ÷ IEP × (1 − mortinatos) × (0,90 × % sexado + 0,50 × % convencional). El semen de carne no aporta reemplazos.</li>
+        <li><b>Costo anual del levante</b> = Σ inventario de la etapa × costo diario × 365. El costo por novilla parida reparte ese costo entre las novillas que llegan al parto, así que ya incluye las que se pierden.</li>
+        <li><b>Validación.</b> Con 100 vacas en ordeño, IEP 13,5 meses, 60 días secos, descarte 30 %, pérdidas 5/2/1/3/1 % y EPP 24 meses, el programa da 35,14 reemplazos por año, 39,70 terneras a criar y 72,84 novillas en levante, igual al modelo de referencia (en pantalla, las cifras de animales se redondean a enteros).</li>
+        <li><b>Novillas por 100 vacas en ordeño.</b> El documento guía expresa la meta de 0,65–0,75 por vaca total, pero su propio ejemplo (72,84 novillas, 117 vacas totales) da 0,62 por vaca total y 0,73 por vaca en ordeño. Por coherencia, el indicador se calcula por cada 100 vacas en ordeño.</li>
+        <li><b>Modo rápido.</b> Usa los valores típicos del escenario actual para los datos que no pregunta (días secos, destete, pérdidas de las etapas 2 a 5, mortinatos) y fija la edad al primer servicio en 12 meses antes del primer parto. La meta es el escenario de referencia de la raza.</li>
+      </ul>
+      <p class="note">Base técnica: cuaderno NotebookLM «Productividad y Tamaño del Hato Lechero de Reemplazo» (34 fuentes). Referencias de semáforo: descarte 25–35 %, EPP Holstein 22–24 m y Jersey 21–22 m, mortalidad en lactancia ≤ 5 %, pérdida acumulada del levante 8–12 %, hembras por sexado 85–90 % y por convencional 50 %.</p>
+    </section>
+  </section>
+  </div>
+</div>
+
+<footer class="foot">
+  <img src="assets/isotipo-datavet.png" alt="" width="40" height="40">
+  <div>
+    <b>Iván Darío Cifuentes Moreno</b> — Médico veterinario · Magíster en Gestión de Negocios Ganaderos · Consultor en analítica de datos e inteligencia de negocios<br>
+    <b>Datavet</b> — «Analizar para innovar, innovar para evolucionar» · Medellín, Colombia<br>
+    <a href="mailto:ivan.cifuentes@datavet.info">ivan.cifuentes@datavet.info</a> · <a href="mailto:idacimo@gmail.com">idacimo@gmail.com</a> · <a href="https://wa.me/573155010037">WhatsApp (+57) 315 501 0037</a> · <a href="https://www.linkedin.com/in/idacimo">LinkedIn: idacimo</a>
+  </div>
+</footer>
+
+<script src="js/model.js"></script>
+<script src="js/app.js"></script>
+<script src="js/export-common.js" defer></script>
+<script src="js/export-xlsx.js" defer></script>
+<script src="js/export-pdf.js" defer></script>
+</body>
+</html>
