@@ -84,3 +84,17 @@ test('privacidad: borrar los datos guardados en el dispositivo', async ({ page }
   await expect(page.locator('#s-M')).toHaveValue('100');
   expect(await page.evaluate(() => localStorage.getItem('datavet-reemplazos-v2'))).not.toContain('Finca Prueba');
 });
+
+test('contador anónimo: eventos sin datos de la finca', async ({ page }) => {
+  await page.evaluate(() => { window.__ev = []; window.goatcounter = {count: o => window.__ev.push(o)}; });
+  await page.fill('#s-finca', 'Finca Secreta');
+  await page.click('.step[data-step="1"] [data-go="2"]');
+  await page.click('.step[data-step="2"] [data-go="3"]');
+  await Promise.all([page.waitForEvent('download'), page.click('.step[data-step="3"] [data-action="pdf"]')]);
+  await expect.poll(() => page.evaluate(() => window.__ev.length)).toBe(2);
+  const ev = await page.evaluate(() => window.__ev);
+  expect(ev.map(e => e.path)).toEqual(['resultados-rapido', 'descarga-pdf-rapido']);
+  expect(JSON.stringify(ev)).not.toContain('Secreta');
+  // en localhost no se carga el script de GoatCounter
+  expect(await page.locator('script[src*="gc.zgo.at"]').count()).toBe(0);
+});

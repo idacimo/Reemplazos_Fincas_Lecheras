@@ -37,6 +37,20 @@ function load(){
   } catch (e) { /* datos dañados: se usan los de ejemplo */ }
 }
 
+/* ---------- contador de uso anónimo (GoatCounter) ----------
+   Cuenta visitas, llegadas a resultados y descargas. Nunca envía datos de la finca.
+   No se activa en pruebas locales (localhost). */
+const GC_URL = 'https://datavet.goatcounter.com/count';
+function initCounter(){
+  if (/^(localhost|127\.0\.0\.1|)$/.test(location.hostname)) return;
+  const s = document.createElement('script');
+  s.async = true; s.src = 'https://gc.zgo.at/count.js'; s.dataset.goatcounter = GC_URL;
+  document.head.appendChild(s);
+}
+function track(name, title){
+  try { if (window.goatcounter && window.goatcounter.count) window.goatcounter.count({path:name, title, event:true}); } catch (e) { /* sin contador */ }
+}
+
 function toast(msg, err = false, ms = 3200){
   const t = $('#toast');
   t.textContent = msg; t.classList.toggle('err', err); t.classList.add('show');
@@ -300,6 +314,7 @@ function goStep(n, focus = true){
     if (bad.length) { bad[0].focus(); toast('Revise el dato marcado en rojo.', true); return; }
     if (ra.errs.length) { $('#s-errs').innerHTML = ra.errs.map(e => `<div class="alert">${e}</div>`).join(''); toast('Revise los datos antes de continuar.', true); return; }
   }
+  if (n === 3 && step !== 3) track('resultados-rapido', 'Resultados, modo rápido');
   step = n;
   $$('.simple .step').forEach(s => { s.hidden = +s.dataset.step !== n; });
   $$('.steps li').forEach(li => {
@@ -442,6 +457,8 @@ async function download(kind, btn){
     if (kind === 'xlsx') await window.DVX.exportXlsx(report(), fileName('xlsx'), loadScript);
     else await window.DVP.exportPdf(report(), fileName('pdf'), loadScript);
     toast(kind === 'pdf' ? 'PDF descargado.' : 'Excel descargado.');
+    track(`descarga-${kind === 'pdf' ? 'pdf' : 'excel'}-${mode === 'full' ? 'completo' : 'rapido'}`,
+          `Descarga ${kind === 'pdf' ? 'PDF' : 'Excel'}, modo ${mode === 'full' ? 'completo' : 'rápido'}`);
   } catch (e) {
     console.error(e);
     toast('No se pudo generar el archivo. Revise su conexión e inténtelo de nuevo.', true, 6000);
@@ -452,7 +469,7 @@ async function download(kind, btn){
 
 /* ---------- eventos ---------- */
 function bind(){
-  $$('.modes button').forEach(b => b.addEventListener('click', () => setMode(b.dataset.mode)));
+  $$('.modes button').forEach(b => b.addEventListener('click', () => { if (b.dataset.mode === 'full' && mode !== 'full') track('modo-completo', 'Abrió el modo completo'); setMode(b.dataset.mode); }));
   $$('[data-mode-go]').forEach(b => b.addEventListener('click', () => { setMode(b.dataset.modeGo); window.scrollTo({top:0}); }));
   $$('[data-go]').forEach(b => b.addEventListener('click', () => goStep(+b.dataset.go)));
   $$('[data-action]').forEach(b => b.addEventListener('click', () => {
@@ -564,6 +581,7 @@ function bind(){
 }
 
 /* ---------- inicio ---------- */
+initCounter();
 load();
 buildFull();
 buildSimple();

@@ -22,7 +22,7 @@ Ambos modos comparten los mismos datos: se puede empezar en Rápido y pasar a Co
 - El PDF y el Excel se generan en el dispositivo y se descargan directamente.
 - La página recuerda los últimos datos solo en ese dispositivo (almacenamiento local del navegador). El botón «Borrar mis datos de este dispositivo» los elimina.
 - No se piden datos personales; el nombre de la finca es opcional y solo aparece en las descargas.
-- Si más adelante se agrega un contador de uso, debe contar solo eventos anónimos (visitas, descargas) sin ningún dato de la finca, y este aviso debe actualizarse.
+- Contador anónimo con [GoatCounter](https://www.goatcounter.com) (sin *cookies*): visitas, llegadas a resultados del modo rápido, apertura del modo completo y descargas de PDF y Excel. Nunca se envían datos de la finca. Panel: https://datavet.goatcounter.com (cuenta `datavet`). No se activa en `localhost`.
 
 ## Estructura
 
