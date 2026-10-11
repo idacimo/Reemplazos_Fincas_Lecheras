@@ -77,11 +77,13 @@ El servidor de Hostinger donde corre n8n no se toca: el DNS solo indica dónde e
 - Validación: 100 vacas en ordeño, IEP 13,5, 60 días secos, descarte 30 %, pérdidas 5/2/1/3/1 %, EPP 24 → 35,14 reemplazos/año, 39,70 terneras, 72,84 novillas (prueba automática en `tests/unit`).
 - Modo rápido: usa los valores típicos del escenario actual para lo que no pregunta y fija el primer servicio 12 meses antes del primer parto. La meta es el escenario de referencia de la raza.
 
-## Antes de publicar
+## Fuentes y aviso
 
-- Confirmar que las referencias técnicas y textos tomados del cuaderno de NotebookLM no tengan restricciones de derechos de autor.
-- Aviso: la herramienta es de apoyo a la decisión y no reemplaza el criterio del médico veterinario o del zootecnista.
+- La literatura técnica, reunida en un cuaderno de NotebookLM, sirvió de base para construir y validar el modelo y las referencias del semáforo. El aplicativo no incorpora aplicaciones, textos ni contenidos de terceros con derechos de autor; los textos y el cálculo son propios de Datavet.
+- La herramienta es de apoyo a la decisión y no reemplaza el criterio del médico veterinario o del zootecnista.
 
 ## Licencia
 
-Por definir (por ejemplo, «Todos los derechos reservados © Datavet» o una licencia abierta). Las librerías incluidas en `vendor/` conservan sus licencias: ExcelJS (MIT), jsPDF (MIT), jsPDF-AutoTable (MIT) y la fuente Jost (SIL Open Font License).
+© 2026 Datavet — Iván Darío Cifuentes Moreno. **Todos los derechos reservados** (ver [LICENSE](LICENSE)). El uso de la calculadora en línea es libre y gratuito; copiar, modificar, redistribuir o usar comercialmente el código, los textos, el diseño o la marca requiere autorización escrita de Datavet.
+
+Las librerías incluidas en `vendor/` conservan sus licencias (textos en `vendor/LICENSES/`): ExcelJS (MIT), jsPDF (MIT), jsPDF-AutoTable (MIT) y la fuente Jost (SIL Open Font License 1.1).
