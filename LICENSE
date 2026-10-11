@@ -1,0 +1,18 @@
+Plan de reemplazos del hato lechero | Datavet
+Copyright © 2026 Datavet — Iván Darío Cifuentes Moreno. Todos los derechos reservados.
+
+Se permite el uso libre y gratuito de la calculadora publicada en
+https://idacimo.github.io/Reemplazos_Fincas_Lecheras/ y de los informes (PDF y Excel)
+que cada usuario genere con ella.
+
+Sin autorización previa y escrita de Datavet, queda prohibido copiar, modificar,
+redistribuir, publicar en otro sitio o usar con fines comerciales el código fuente,
+los textos, el diseño, los logotipos y la marca Datavet contenidos en este repositorio.
+Que el repositorio sea público no concede ninguna licencia sobre su contenido.
+
+Componentes de terceros: las librerías y fuentes de la carpeta vendor/ conservan sus
+propias licencias (ver vendor/LICENSES/): ExcelJS (MIT), jsPDF (MIT),
+jsPDF-AutoTable (MIT) y la fuente Jost (SIL Open Font License 1.1).
+
+Contacto para autorizaciones: ivan.cifuentes@datavet.info · idacimo@gmail.com ·
+WhatsApp (+57) 315 501 0037 · Medellín, Colombia.
