@@ -31,8 +31,8 @@ const CURRENCIES = [
 const BASE_USD = {c1:3.90, c2:1.95, c3:2.32, c4:2.33, c5:2.33};
 const PRESET = {Holstein:{dest:2, serv:13, EPP:24}, Jersey:{dest:2, serv:11, EPP:21}};
 const DEF = {
-  a:{M:100, IEP:14, DS:65, TD:28, raza:'Holstein', dest:2.5, serv:16, EPP:28, p1:8, p2:3, p3:2, p4:5, p5:2, mort:6, sx:0, cb:10},
-  m:{M:100, IEP:13.5, DS:60, TD:30, raza:'Holstein', dest:2, serv:13, EPP:24, p1:5, p2:2, p3:1, p4:3, p5:1, mort:5, sx:15, cb:25},
+  a:{M:100, secas:null, IEP:14, DS:65, TD:28, raza:'Holstein', dest:2.5, serv:16, EPP:28, p1:8, p2:3, p3:2, p4:5, p5:2, mort:6, sx:0, cb:10},
+  m:{M:100, secas:null, IEP:13.5, DS:60, TD:30, raza:'Holstein', dest:2, serv:13, EPP:24, p1:5, p2:2, p3:1, p4:3, p5:1, mort:5, sx:15, cb:25},
   /* Costos de ejemplo en pesos colombianos (equivalen a BASE_USD con una TRM de referencia de $3.200) */
   sh:{mon:'COP', costCur:'COP', c1:12480, c2:6240, c3:7420, c4:7460, c5:7460}
 };
@@ -40,8 +40,9 @@ const DEF = {
 const ROWS = [
   {g:'Hato adulto'},
   {k:'M', l:'Vacas en ordeño', u:'cab'},
-  {k:'IEP', l:'Intervalo entre partos', u:'meses'},
-  {k:'DS', l:'Días secos', u:'días'},
+  {k:'secas', l:'Vacas secas hoy (opcional)', u:'cab', opt:true},
+  {k:'IEP', l:'Intervalo entre partos', u:'meses (o días)'},
+  {k:'DS', l:'Días secos (si no hay dato de vacas secas)', u:'días'},
   {k:'TD', l:'Tasa de descarte anual', u:'%'},
   {g:'Edades del levante'},
   {k:'raza', l:'Raza', type:'sel'},
@@ -69,6 +70,8 @@ const COSTROWS = [
 const nf = (x, d = 1) => isFinite(x) ? x.toLocaleString('es-CO', {minimumFractionDigits:d, maximumFractionDigits:d}) : '–';
 const sgn = (x, d = 1) => !isFinite(x) ? '–' : (x > 0.0005 ? '+' : x < -0.0005 ? '−' : '') + nf(Math.abs(x), d);
 const toIn = v => String(v).replace('.', ',');
+/* Intervalo entre partos: si se escribe en días (más de 40), se convierte a meses */
+const iepMonths = v => v > 40 ? +(v / 30.4).toFixed(1) : v;
 const symOf = mon => { const c = CURRENCIES.find(x => x[0] === mon); return c ? c[2] : mon; };
 
 /* Acepta 15.000 · 3,90 · 1.234,5 · y también 1,234.56 o 3.90 */
@@ -89,13 +92,22 @@ const parse = s => {
   return isFinite(v) ? v : NaN;
 };
 
+/* Dato opcional: vacío, null o no numérico = no ingresado */
+const hasValue = v => v !== null && v !== undefined && v !== '' && isFinite(v);
+
 /* ---------- modelo ---------- */
 function compute(p, costs){
   const errs = [];
   const dias = p.IEP * 30.4;
-  const Pord = (dias - p.DS) / dias;
+  /* Vacas secas: si se conoce cuántas hay hoy, el hato adulto es ordeño + secas.
+     Si no, se estima con la proporción en ordeño = (IEP × 30,4 − días secos) ÷ (IEP × 30,4). */
+  const hasSecas = hasValue(p.secas);
+  const PordEst = (dias - p.DS) / dias;
+  const secasEst = p.M / PordEst - p.M;
   if (!(p.M > 0)) errs.push('Las vacas en ordeño deben ser mayores que cero.');
-  if (!(Pord > 0 && Pord <= 1)) errs.push('Los días secos deben ser menores que el intervalo entre partos.');
+  if (hasSecas && !(p.secas >= 0)) errs.push('Las vacas secas no pueden ser negativas.');
+  if (!hasSecas && !(PordEst > 0 && PordEst <= 1)) errs.push('Los días secos deben ser menores que el intervalo entre partos.');
+  const Pord = hasSecas ? p.M / (p.M + p.secas) : PordEst;
   if (!(p.TD >= 0 && p.TD < 100)) errs.push('La tasa de descarte debe estar entre 0 y 100 %.');
   if (!(p.dest > 0 && p.dest <= 6)) errs.push('La edad al destete debe estar entre 0 y 6 meses.');
   if (!(p.serv >= 6)) errs.push('La edad al primer servicio debe ser de 6 meses o más.');
@@ -104,7 +116,7 @@ function compute(p, costs){
   const losses = [p.p1, p.p2, p.p3, p.p4, p.p5];
   if (losses.some(x => !(x >= 0 && x < 100))) errs.push('Las pérdidas por etapa deben estar entre 0 y 100 %.');
 
-  const T = p.M / Pord, secas = T - p.M;
+  const T = hasSecas ? p.M + p.secas : p.M / Pord, secas = T - p.M;
   const C = T * p.TD / 100;
   const d = [p.dest, 6 - p.dest, p.serv - 6, p.EPP - GEST - p.serv, GEST].map(x => Math.max(0, x));
   const s = losses.map(x => 1 - x / 100);
@@ -139,7 +151,7 @@ function compute(p, costs){
   }
   st.forEach((o, i) => { o.invR = fl[i]; });
   const femR = Math.round(fem), HR = Math.round(H);
-  return {errs, Pord, T, secas, C, Scum, H, st, I, IR, ratio:I / p.M * 100, partos, vivos, fem, bal, femR, HR, balR:femR - HR,
+  return {errs, Pord, T, secas, hasSecas, secasEst, C, Scum, H, st, I, IR, ratio:I / p.M * 100, partos, vivos, fem, bal, femR, HR, balR:femR - HR,
           novPos:fem * Scum, need, sMinBeef, bMax, sReq, cv, daily, annual, perHeifer:annual / C, ageEnd:age};
 }
 
@@ -170,26 +182,30 @@ const SUM = [
 
 const eppRange = p => p.raza === 'Jersey' ? [21, 22] : [22, 24];
 const DIAG = [
+  /* Semáforo: un valor mejor que la referencia nunca queda en rojo.
+     Descarte bajo no es crítico (solo atención: menos selección); descarte alto sí. */
   {l:'Tasa de descarte anual', ref:'25–35 %', v:(r, p) => p.TD, f:v => nf(v, 0) + ' %', unit:'%', dec:0,
-   st:v => v >= 25 && v <= 35 ? 'g' : (v >= 20 && v <= 40 ? 'y' : 'r')},
-  {l:'Intervalo entre partos', ref:'≤ 13,5 meses', v:(r, p) => p.IEP, f:v => nf(v, 1) + ' m', unit:'m', dec:1,
+   st:v => v >= 25 && v <= 35 ? 'g' : v <= 40 ? 'y' : 'r'},
+  {l:'Intervalo entre partos', ref:'≤ 13,5 meses (≤ 410 días)', v:(r, p) => p.IEP, f:v => `${nf(v, 1)} m · ${nf(v * 30.4, 0)} d`, unit:'m', dec:1,
    st:v => v <= 13.5 ? 'g' : v <= 14.5 ? 'y' : 'r'},
+  /* Edad al primer parto: más temprano es mejor; solo por debajo de 2 meses del rango se pide revisar el peso al servicio */
   {l:'Edad al primer parto', ref:'Holstein 22–24 m, Jersey 21–22 m', v:(r, p) => p.EPP, f:v => nf(v, 1) + ' m', unit:'m', dec:1,
-   st:(v, p) => { const [lo, hi] = eppRange(p); return v >= lo && v <= hi ? 'g' : (v >= lo - 1 && v <= hi + 3 ? 'y' : 'r'); }},
+   st:(v, p) => { const [lo, hi] = eppRange(p); return v <= hi ? (v >= lo - 2 ? 'g' : 'y') : (v <= hi + 3 ? 'y' : 'r'); }},
   {l:'Mortalidad en lactancia', ref:'≤ 5 %', v:(r, p) => p.p1, f:v => nf(v, 1) + ' %', unit:'%', dec:1,
    st:v => v <= 5 ? 'g' : v <= 8 ? 'y' : 'r'},
   {l:'Pérdida acumulada del levante', ref:'8–12 %', v:r => (1 - r.Scum) * 100, f:v => nf(v, 1) + ' %', unit:'%', dec:1,
    st:v => v <= 12 ? 'g' : v <= 15 ? 'y' : 'r'},
-  {l:'Novillas por cada 100 vacas en ordeño', ref:'65–75', v:r => r.ratio, f:v => nf(v, 0), dec:0,
-   st:v => v >= 65 && v <= 75 ? 'g' : (v >= 55 && v <= 85 ? 'y' : 'r')},
+  /* Es lo que se requiere: necesitar menos novillas para sostener el hato es mejor */
+  {l:'Novillas por cada 100 vacas en ordeño', ref:'≤ 75 (meta 65–75)', v:r => r.ratio, f:v => nf(v, 0), dec:0,
+   st:v => { v = Math.round(v); return v <= 75 ? 'g' : v <= 85 ? 'y' : 'r'; }},
   {l:'Balance de terneras hembras', ref:'≥ 0 por año', v:r => r.balR, f:v => sgn(v, 0), dec:0,
    st:v => v >= 0 ? 'g' : v >= -3 ? 'y' : 'r'}
 ];
-const WORD = {g:'Dentro de la referencia', y:'Requiere atención', r:'Crítico'};
+const WORD = {g:'Dentro de la referencia o mejor', y:'Requiere atención', r:'Crítico'};
 const DOT = {g:'#209B6C', y:'#F5A623', r:'#D0021B'};
 
 const api = {FEM_SX, FEM_CV, GEST, STAGES, CURRENCIES, BASE_USD, PRESET, DEF, ROWS, COSTROWS,
-             nf, sgn, toIn, symOf, parse, compute, convertCosts, SUM, DIAG, WORD, DOT, eppRange};
+             nf, sgn, toIn, symOf, parse, hasValue, iepMonths, compute, convertCosts, SUM, DIAG, WORD, DOT, eppRange};
 if (typeof module !== 'undefined' && module.exports) module.exports = api;
 else root.RM = api;
 })(typeof window !== 'undefined' ? window : globalThis);

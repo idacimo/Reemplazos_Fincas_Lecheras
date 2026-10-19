@@ -25,31 +25,51 @@ test('modo rápido: tres pasos, resultados y descargas', async ({ page }) => {
   await expect(kpis).toHaveText(['33', '41', '82']);
   await expect(page.locator('#s-result')).toContainText('Hoy tiene 84 hembras de levante');
 
-  // Excel
+  // Excel del modo rápido: solo lo preguntado y los resultados
   const [dx] = await Promise.all([page.waitForEvent('download'), page.click('.step[data-step="3"] [data-action="xlsx"]')]);
   expect(dx.suggestedFilename()).toMatch(/^plan_reemplazos_La_Esperanza_\d{4}-\d{2}-\d{2}\.xlsx$/);
   const wb = new ExcelJS.Workbook();
   await wb.xlsx.load(await readFile(await dx.path()));
-  expect(wb.worksheets.map(w => w.name)).toEqual(['Resumen', 'Parámetros', 'Inventario por etapa', 'Etapas', 'Diagnóstico', 'Gráfico']);
-  const res = wb.getWorksheet('Resumen');
-  expect(res.getCell('A8').value).toBe('Vacas adultas totales');
-  expect(res.getCell('B8').value).toBe(118);
-  expect(res.getCell('B8').numFmt).toBe('#,##0');
+  expect(wb.worksheets.map(w => w.name)).toEqual(['Resultados', 'Por grupo', 'Semáforo', 'Gráfico']);
+  const res = wb.getWorksheet('Resultados');
+  expect(res.getCell('B8').value).toBe(33);
   expect(res.getCell('A7').fill.fgColor.argb).toBe('FF07193F');
-  const inv = wb.getWorksheet('Inventario por etapa');
-  const req = [8, 9, 10, 11, 12].map(r => inv.getCell(`D${r}`).value);
-  expect(req.every(Number.isInteger)).toBe(true);
-  expect(req.reduce((a, b) => a + b, 0)).toBe(inv.getCell('D13').value);
-  expect(inv.getCell('F13').value).toBe(84);
-  expect(wb.getWorksheet('Diagnóstico').getCell('C8').fill.fgColor.argb).toMatch(/^FF(209B6C|F5A623|D0021B)$/);
+  const allText = wb.worksheets.flatMap(w => w.getSheetValues().flat()).map(v => typeof v === 'object' && v ? JSON.stringify(v) : String(v)).join(' ');
+  expect(allText).not.toMatch(/\$\s?\d/);   // sin montos de dinero: los costos no se preguntan en el modo rápido
+  const grp = wb.getWorksheet('Por grupo');
+  const req = [8, 9, 10, 11, 12].map(r => grp.getCell(`C${r}`).value);
+  expect(req.reduce((a, b) => a + b, 0)).toBe(grp.getCell('C13').value);
+  expect(grp.getCell('E13').value).toBe(84);
+  expect(wb.getWorksheet('Semáforo').getCell('C8').fill.fgColor.argb).toMatch(/^FF(209B6C|F5A623|D0021B)$/);
 
   // PDF
   const [dp] = await Promise.all([page.waitForEvent('download'), page.click('.step[data-step="3"] [data-action="pdf"]')]);
   const pdf = await readFile(await dp.path());
   expect(pdf.subarray(0, 5).toString()).toBe('%PDF-');
   const pages = (pdf.toString('latin1').match(/\/Type \/Page[^s]/g) || []).length;
-  expect(pages).toBeGreaterThanOrEqual(2);
-  expect(pages).toBeLessThanOrEqual(4);
+  expect(pages).toBeGreaterThanOrEqual(1);
+  expect(pages).toBeLessThanOrEqual(3);
+});
+
+test('modo rápido: vacas secas e intervalo en días', async ({ page }) => {
+  await page.fill('#s-secas', '30');
+  await page.click('.step[data-step="1"] [data-go="2"]');
+  await page.fill('#s-IEP', '390');
+  await page.locator('#s-IEP').blur();
+  await expect(page.locator('#s-IEP')).toHaveValue('12,8');
+  await page.click('.step[data-step="2"] [data-go="3"]');
+  await expect(page.locator('.r-head p')).toContainText('100 en ordeño + 30 secas = 130 vacas adultas');
+  const iep = page.locator('.lights li', {hasText:'Intervalo entre partos'});
+  await expect(iep.locator('.dot')).toHaveClass(/\bg\b/);
+});
+
+test('modo completo: Excel con las 6 hojas detalladas', async ({ page }) => {
+  await page.click('.modes [data-mode="full"]');
+  const [dx] = await Promise.all([page.waitForEvent('download'), page.click('.full-bar [data-action="xlsx"]')]);
+  const wb = new ExcelJS.Workbook();
+  await wb.xlsx.load(await readFile(await dx.path()));
+  expect(wb.worksheets.map(w => w.name)).toEqual(['Resumen', 'Parámetros', 'Inventario por etapa', 'Etapas', 'Diagnóstico', 'Gráfico']);
+  expect(wb.getWorksheet('Resumen').getCell('B8').value).toBe(118);
 });
 
 test('modo rápido: datos inválidos no dejan avanzar', async ({ page }) => {

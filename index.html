@@ -71,6 +71,16 @@
         <span class="unit">vacas</span>
       </div>
     </div>
+    <div class="card">
+      <label class="q" for="s-secas">¿Cuántas vacas secas tiene hoy? <small>(opcional)</small></label>
+      <p class="hint" id="h-secas">Vacas del hato que no se están ordeñando.</p>
+      <div class="stepper" data-k="secas" data-step="1" data-min="0" data-max="20000" data-opt="true">
+        <button type="button" class="minus" aria-label="Restar">−</button>
+        <input id="s-secas" inputmode="numeric" autocomplete="off">
+        <button type="button" class="plus" aria-label="Sumar">+</button>
+        <span class="unit">vacas</span>
+      </div>
+    </div>
     <div class="nav"><button type="button" class="btn big" data-go="2">Siguiente</button></div>
   </section>
 
@@ -80,8 +90,8 @@
     <p class="hint-top">Si no conoce un dato exacto, deje el valor que aparece: es un valor típico de fincas lecheras.</p>
     <div class="card">
       <label class="q" for="s-IEP">¿Cada cuánto pare una vaca, en promedio?</label>
-      <p class="hint">Intervalo entre partos. Lo ideal es 13,5 meses o menos.</p>
-      <div class="stepper" data-k="IEP" data-step="0.5" data-min="11" data-max="24">
+      <p class="hint">Intervalo entre partos, en meses. Lo ideal es 13,5 meses o menos (410 días). Si lo tiene en días, escríbalo así y se convierte solo.</p>
+      <div class="stepper" data-k="IEP" data-step="0.5" data-min="11" data-max="800">
         <button type="button" class="minus" aria-label="Restar">−</button>
         <input id="s-IEP" inputmode="decimal" autocomplete="off">
         <button type="button" class="plus" aria-label="Sumar">+</button>
@@ -236,7 +246,7 @@
     <section class="block">
       <h2>Diagnóstico frente a referencias</h2>
       <div class="tbl-wrap"><table class="data" id="diag"></table></div>
-      <p class="note"><span class="dot g"></span>Dentro de la referencia <span class="dot y ml"></span>Requiere atención <span class="dot r ml"></span>Crítico</p>
+      <p class="note"><span class="dot g"></span>Dentro de la referencia o mejor <span class="dot y ml"></span>Requiere atención <span class="dot r ml"></span>Crítico</p>
     </section>
 
     <section class="block print-params">
@@ -252,7 +262,7 @@
     <section class="block method">
       <h2>Cómo calcula</h2>
       <ul>
-        <li><b>Vacas adultas totales</b> = vacas en ordeño ÷ proporción en ordeño, con proporción = (IEP × 30,4 − días secos) ÷ (IEP × 30,4).</li>
+        <li><b>Vacas adultas totales</b> = vacas en ordeño + vacas secas. Si no se conoce el número de vacas secas, se estima: vacas en ordeño ÷ proporción en ordeño, con proporción = (IEP × 30,4 − días secos) ÷ (IEP × 30,4).</li>
         <li><b>Novillas paridas necesarias por año</b> = vacas totales × tasa de descarte anual (incluye muertes).</li>
         <li><b>Terneras vivas a criar por año</b> = novillas necesarias ÷ supervivencia acumulada, que es el producto de la supervivencia de las cinco etapas.</li>
         <li><b>Inventario de cada etapa</b> = terneras que entran a la etapa × duración en años × supervivencia media de la etapa. La gestación se fija en 9 meses, así que la etapa de servicio dura EPP − 9 − edad al primer servicio.</li>
@@ -260,9 +270,9 @@
         <li><b>Costo anual del levante</b> = Σ inventario de la etapa × costo diario × 365. El costo por novilla parida reparte ese costo entre las novillas que llegan al parto, así que ya incluye las que se pierden.</li>
         <li><b>Validación.</b> Con 100 vacas en ordeño, IEP 13,5 meses, 60 días secos, descarte 30 %, pérdidas 5/2/1/3/1 % y EPP 24 meses, el programa da 35,14 reemplazos por año, 39,70 terneras a criar y 72,84 novillas en levante, igual al modelo de referencia (en pantalla, las cifras de animales se redondean a enteros).</li>
         <li><b>Novillas por 100 vacas en ordeño.</b> El documento guía expresa la meta de 0,65–0,75 por vaca total, pero su propio ejemplo (72,84 novillas, 117 vacas totales) da 0,62 por vaca total y 0,73 por vaca en ordeño. Por coherencia, el indicador se calcula por cada 100 vacas en ordeño.</li>
-        <li><b>Modo rápido.</b> Usa los valores típicos del escenario actual para los datos que no pregunta (días secos, destete, pérdidas de las etapas 2 a 5, mortinatos) y fija la edad al primer servicio en 12 meses antes del primer parto. La meta es el escenario de referencia de la raza.</li>
+        <li><b>Modo rápido.</b> Usa los valores típicos del escenario actual para los datos que no pregunta (días secos si no se ingresan las vacas secas, destete, pérdidas de las etapas 2 a 5, mortinatos) y fija la edad al primer servicio en 12 meses antes del primer parto. La meta es el escenario de referencia de la raza.</li>
       </ul>
-      <p class="note">Base técnica: cuaderno NotebookLM «Productividad y Tamaño del Hato Lechero de Reemplazo» (34 fuentes). Referencias de semáforo: descarte 25–35 %, EPP Holstein 22–24 m y Jersey 21–22 m, mortalidad en lactancia ≤ 5 %, pérdida acumulada del levante 8–12 %, hembras por sexado 85–90 % y por convencional 50 %.</p>
+      <p class="note">Base técnica: cuaderno NotebookLM «Productividad y Tamaño del Hato Lechero de Reemplazo» (34 fuentes). Referencias de semáforo (un valor mejor que la referencia queda en verde): descarte 25–35 %, IEP ≤ 13,5 m, EPP Holstein 22–24 m y Jersey 21–22 m, mortalidad en lactancia ≤ 5 %, pérdida acumulada del levante ≤ 12 %, novillas por 100 vacas en ordeño ≤ 75, hembras por sexado 85–90 % y por convencional 50 %.</p>
     </section>
   </section>
   </div>
