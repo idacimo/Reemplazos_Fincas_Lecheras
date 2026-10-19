@@ -36,7 +36,7 @@ async function exportXlsx(rep, fileName, loadScript){
   const logoId = wb.addImage({base64:await window.DVC.fetchB64('assets/logo-datavet-negativo.png'), extension:'png'});
   const money = (dec = 0) => moneyFmt(rep.sym, dec);
   const costDec = Math.max(...COSTROWS.map(r => rep.S.sh[r.k])) < 100 ? 2 : 0;
-  const metaLine = [rep.finca ? `Finca: ${rep.finca}` : 'Finca: sin nombre', rep.fechaTxt ? `Fecha: ${rep.fechaTxt}` : '', `Moneda: ${rep.mon} (${rep.sym})`].filter(Boolean).join('   ·   ');
+  const metaLine = [rep.finca ? `Finca: ${rep.finca}` : 'Finca: sin nombre', rep.fechaTxt ? `Fecha: ${rep.fechaTxt}` : '', rep.mode === 'simple' ? '' : `Moneda: ${rep.mon} (${rep.sym})`].filter(Boolean).join('   ·   ');
 
   /* ---------- hoja con banda de marca ---------- */
   function sheet(name, title, widths, landscape = true){
@@ -130,127 +130,181 @@ async function exportXlsx(rep, fileName, loadScript){
   const dirColor = dir => v => (typeof v !== 'number' || !dir || Math.abs(v) < 1e-9) ? null : (v * dir > 0 ? GREEN_T : RED_T);
   const negRed = v => typeof v === 'number' && v < -0.05 ? RED_T : (typeof v === 'number' && v > 0.05 ? GREEN_T : null);
 
-  /* ===== Resumen ===== */
-  {
-    const ws = sheet('Resumen', 'Resumen del plan', [50, 18, 18, 18]);
-    const rows = [], fmts = [], dirs = [];
-    SUM.forEach(([l, f, d, dir, signed]) => {
-      let a = f(ra), m = f(rm);
-      if (d === 0) { a = Math.round(a); m = Math.round(m); }
-      rows.push([d === '$' ? `${l} (${rep.sym})` : l, a, m, m - a]);
-      fmts.push(d === '$' ? [money(), money(), `+${money().split(';')[0]};-${money().split(';')[0]};${money().split(';')[0]}`]
-        : d === 1 ? [F.pct, F.pct, '+0.0" %";-0.0" %";0.0" %"']
-        : [signed ? F.signed : F.int, signed ? F.signed : F.int, F.signed]);
-      dirs.push(dir);
-    });
-    const end = table(ws, 7, [
-      {h:'Indicador'},
-      {h:'Actual', tint:'a', fmt:i => fmts[i][0]},
-      {h:'Meta', tint:'m', fmt:i => fmts[i][1]},
-      {h:'Diferencia (meta − actual)', fmt:i => fmts[i][2], style:(cell, v, i) => { const col = dirColor(dirs[i])(v); if (col) cell.font = {...cell.font, color:{argb:col}, bold:true}; }}
-    ], rows);
-    let r = end + 2;
-    note(ws, r, 'Conclusión', {bold:true, color:NAVY, size:11});
-    note(ws, ++r, (rep.finca ? rep.finca + '. ' : '') + rep.lead, {color:NAVY, size:10.5});
-    r += 2;
-    note(ws, r, 'Terneras disponibles y estrategia de semen', {bold:true, color:NAVY, size:11});
-    for (const [k, name] of [['a', 'Actual'], ['m', 'Meta']]) {
-      note(ws, ++r, `${name}: ` + rep.semen[k].map(t => t.text).join(' '), {color:NAVY});
+  const LIGHT_STYLE = (cell, v) => {
+    cell.value = WORD[v];
+    cell.fill = fill(LIGHT[v]);
+    cell.font = {name:FONT, size:10, bold:true, color:{argb:v === 'y' ? NAVY : 'FFFFFFFF'}};
+    cell.alignment = {horizontal:'center', vertical:'middle'};
+    cell.border = {bottom:thin('FFFFFFFF'), top:thin('FFFFFFFF')};
+  };
+
+  if (rep.mode === 'simple' && rep.simple) {
+    /* ===== Modo rápido: solo lo preguntado, los resultados y los supuestos ===== */
+    const sr = rep.simple, p = rep.S.a;
+    {
+      const ws = sheet('Resultados', 'Resultados del plan', [52, 30]);
+      let r = table(ws, 7, [{h:'Para sostener su hato, usted necesita'}, {h:'Cantidad', fmt:F.int}],
+        [...sr.kpis.map(([v, l]) => [l.charAt(0).toUpperCase() + l.slice(1), Math.round(v)]), ['Vacas adultas totales', Math.round(ra.T)]]);
+      note(ws, ++r, sr.herd, {size:9});
+      r += 2;
+      note(ws, r, sr.verdict.title, {bold:true, size:11, color:sr.verdict.kind === 'ok' ? GREEN_T : sr.verdict.kind === 'bad' ? RED_T : 'FF8A5A00'});
+      note(ws, ++r, sr.verdict.text, {color:NAVY});
+      if (sr.invText) note(ws, ++r, sr.invText, {color:NAVY});
+      r += 2;
+      r = table(ws, r, [{h:'Sus datos'}, {h:'Valor', align:'left'}], sr.entered.map(e => [...e]));
+      note(ws, r + 2, sr.assumptions, {italic:true, size:9});
+      footer(ws, r + 3);
+      ws.views = [{showGridLines:false}];
     }
-    note(ws, r + 2, 'Verde: la meta mejora frente al escenario actual. Rojo: la meta empeora. Las cifras de animales están en enteros.', {italic:true, size:9});
-    footer(ws, r + 3);
-  }
+    {
+      const ws = sheet('Por grupo', 'Hembras por grupo', [30, 38, 13, 13, 13]);
+      const hasHoy = sr.groups.some(g => g.hoy !== null);
+      const rows = sr.groups.map((g, i) => [g.name, g.desc, g.need, g.meta, g.hoy === null ? '' : g.hoy]);
+      rows.push(['Total', '', ra.IR, rm.IR, rep.inv.n ? rep.inv.total : '']);
+      const end = table(ws, 7, [
+        {h:'Grupo', style:(cell, v, i) => { if (i < 5) cell.value = {richText:[{text:'■ ', font:{name:FONT, size:11, color:{argb:'FF' + sr.groups[i].color.slice(1)}}}, {text:v, font:{name:FONT, size:10, color:{argb:NAVY}}}]}; }},
+        {h:'Edad', align:'left'}, {h:'Necesita', tint:'a', fmt:F.int}, {h:'Meta', tint:'m', fmt:F.int},
+        {h:hasHoy ? 'Hoy tiene' : 'Hoy tiene (sin dato)', fmt:F.int, style:(cell, v, i) => { if (i < 5 && typeof v === 'number' && v < sr.groups[i].need) cell.font = {...cell.font, color:{argb:RED_T}, bold:true}; }}
+      ], rows, {total:5});
+      note(ws, end + 2, 'Necesita: hembras requeridas con sus indicadores actuales. Meta: las que bastarían si alcanza los valores de referencia de la raza. En rojo, los grupos donde hoy tiene menos de las que necesita.', {italic:true, size:9});
+      footer(ws, end + 3);
+    }
+    {
+      const ws = sheet('Semáforo', 'Semáforo de sus indicadores', [42, 16, 32, 36]);
+      const fmts = [];
+      const rows = DIAG.map(d => {
+        const v = d.v(ra, p), rr = d.dec === 0 ? Math.round(v) : Math.round(v * 10) / 10;
+        fmts.push(d.unit === '%' ? (d.dec ? F.pct : F.pct0) : d.unit === 'm' ? F.months : (d.l.startsWith('Balance') ? F.signed : F.int));
+        return [d.l, rr, d.st(v, p), d.ref];
+      });
+      const end = table(ws, 7, [{h:'Indicador'}, {h:'Su valor', fmt:i => fmts[i]}, {h:'Estado', style:LIGHT_STYLE}, {h:'Referencia', align:'left', wrap:true}], rows);
+      note(ws, end + 2, 'Verde: dentro de la referencia o mejor. Ámbar: requiere atención. Rojo: crítico.', {italic:true, size:9});
+      footer(ws, end + 3);
+    }
+    {
+      const ws = sheet('Gráfico', 'Gráfico por etapa', [14, 14, 14, 14, 14, 14, 14, 14, 14, 14]);
+      const bars = wb.addImage({base64:window.DVC.barChartPng(rep).split(',')[1], extension:'png'});
+      ws.addImage(bars, {tl:{col:0.2, row:6.5}, ext:{width:900, height:450}, editAs:'oneCell'});
+      for (let r = 7; r <= 31; r++) ws.getRow(r).height = 18;
+      footer(ws, 31);
+    }
+  } else {
+    /* ===== Resumen ===== */
+    {
+      const ws = sheet('Resumen', 'Resumen del plan', [50, 18, 18, 18]);
+      const rows = [], fmts = [], dirs = [];
+      SUM.forEach(([l, f, d, dir, signed]) => {
+        let a = f(ra), m = f(rm);
+        if (d === 0) { a = Math.round(a); m = Math.round(m); }
+        rows.push([d === '$' ? `${l} (${rep.sym})` : l, a, m, m - a]);
+        fmts.push(d === '$' ? [money(), money(), `+${money().split(';')[0]};-${money().split(';')[0]};${money().split(';')[0]}`]
+          : d === 1 ? [F.pct, F.pct, '+0.0" %";-0.0" %";0.0" %"']
+          : [signed ? F.signed : F.int, signed ? F.signed : F.int, F.signed]);
+        dirs.push(dir);
+      });
+      const end = table(ws, 7, [
+        {h:'Indicador'},
+        {h:'Actual', tint:'a', fmt:i => fmts[i][0]},
+        {h:'Meta', tint:'m', fmt:i => fmts[i][1]},
+        {h:'Diferencia (meta − actual)', fmt:i => fmts[i][2], style:(cell, v, i) => { const col = dirColor(dirs[i])(v); if (col) cell.font = {...cell.font, color:{argb:col}, bold:true}; }}
+      ], rows);
+      let r = end + 2;
+      note(ws, r, 'Conclusión', {bold:true, color:NAVY, size:11});
+      note(ws, ++r, (rep.finca ? rep.finca + '. ' : '') + rep.lead, {color:NAVY, size:10.5});
+      r += 2;
+      note(ws, r, 'Terneras disponibles y estrategia de semen', {bold:true, color:NAVY, size:11});
+      for (const [k, name] of [['a', 'Actual'], ['m', 'Meta']]) {
+        note(ws, ++r, `${name}: ` + rep.semen[k].map(t => t.text).join(' '), {color:NAVY});
+      }
+      note(ws, r + 2, 'Verde: la meta mejora frente al escenario actual. Rojo: la meta empeora. Las cifras de animales están en enteros.', {italic:true, size:9});
+      footer(ws, r + 3);
+    }
 
-  /* ===== Parámetros ===== */
-  {
-    const ws = sheet('Parámetros', 'Parámetros usados', [46, 12, 16, 16], false);
-    const rows = []; const kinds = [];
-    rep.params.forEach(p => {
-      if (p.g) { const g = [p.g, '', '', '']; g.__group = true; rows.push(g); kinds.push('g'); return; }
-      const unit = p.cost ? `${rep.sym}/día` : (p.u || '');
-      const label = p.l.replace(/ \([^)]*\)$/, '');
-      rows.push([label, unit, p.va, p.cost ? p.va : p.vm]);
-      kinds.push(p.cost ? 'cost' : p.u === '%' ? 'pct' : 'num');
-    });
-    const fmt = i => kinds[i] === 'cost' ? money(costDec) : 'General';
-    const end = table(ws, 7, [
-      {h:'Parámetro'}, {h:'Unidad', align:'left'},
-      {h:'Actual', tint:'a', fmt}, {h:'Meta', tint:'m', fmt}
-    ], rows);
-    note(ws, end + 2, 'Los costos por novilla por día son los mismos en ambos escenarios. Valores de Meta: escenario de referencia de la raza.', {italic:true, size:9});
-    footer(ws, end + 3);
-  }
+    /* ===== Parámetros ===== */
+    {
+      const ws = sheet('Parámetros', 'Parámetros usados', [46, 12, 16, 16], false);
+      const rows = []; const kinds = [];
+      rep.params.forEach(p => {
+        if (p.g) { const g = [p.g, '', '', '']; g.__group = true; rows.push(g); kinds.push('g'); return; }
+        const unit = p.cost ? `${rep.sym}/día` : (p.u || '');
+        const label = p.l.replace(/ \([^)]*\)$/, '');
+        rows.push([label, unit, p.va, p.cost ? p.va : p.vm]);
+        kinds.push(p.cost ? 'cost' : p.u === '%' ? 'pct' : 'num');
+      });
+      const fmt = i => kinds[i] === 'cost' ? money(costDec) : 'General';
+      const end = table(ws, 7, [
+        {h:'Parámetro'}, {h:'Unidad', align:'left'},
+        {h:'Actual', tint:'a', fmt}, {h:'Meta', tint:'m', fmt}
+      ], rows);
+      note(ws, end + 2, 'Los costos por novilla por día son los mismos en ambos escenarios. Valores de Meta: escenario de referencia de la raza.', {italic:true, size:9});
+      footer(ws, end + 3);
+    }
 
-  /* ===== Inventario por etapa ===== */
-  {
-    const ws = sheet('Inventario por etapa', 'Inventario por etapa', [36, 15, 15, 14, 14, 11, 13, 13, 20]);
-    const per = s => s.d > 0 ? `${String(+s.a0.toFixed(1)).replace('.', ',')}–${String(+s.a1.toFixed(1)).replace('.', ',')}` : 'no aplica';
-    const rows = ra.st.map((s, i) => {
-      const r = rep.inv.rows[i];
-      return [STAGES[i].full, per(s), per(rm.st[i]), s.invR, rm.st[i].invR, r.has ? r.v : '', r.has ? r.dA : '', r.has ? r.dM : '', Math.round(s.cost)];
-    });
-    rows.push(['Total', `0–${String(+ra.ageEnd.toFixed(1)).replace('.', ',')}`, `0–${String(+rm.ageEnd.toFixed(1)).replace('.', ',')}`, ra.IR, rm.IR,
-               rep.inv.n ? rep.inv.total : '', rep.inv.n ? rep.inv.dA : '', rep.inv.n ? rep.inv.dM : '', Math.round(ra.st.reduce((a, s) => a + s.cost, 0))]);
-    const end = table(ws, 7, [
-      {h:'Etapa', style:(cell, v, i) => { if (i < 5) cell.value = {richText:[{text:'■ ', font:{name:FONT, size:11, color:{argb:'FF' + STAGES[i].color.slice(1)}}}, {text:v, font:{name:FONT, size:10, color:{argb:NAVY}}}]}; }},
-      {h:'Período actual (meses de edad)'}, {h:'Período meta (meses de edad)'},
-      {h:'Requeridas, actual', tint:'a', fmt:F.int}, {h:'Requeridas, meta', tint:'m', fmt:F.int},
-      {h:'Hay hoy', fmt:F.int},
-      {h:'Hoy − actual', fmt:F.signed, color:negRed}, {h:'Hoy − meta', fmt:F.signed, color:negRed},
-      {h:`Costo anual, actual (${rep.sym})`, fmt:money()}
-    ], rows, {total:5});
-    let r = end + 2;
-    if (rep.inv.n) note(ws, r++, `Hoy hay ${rep.inv.total} novillas. Un valor negativo, en rojo, es una etapa con déficit frente a ese escenario.`, {color:NAVY});
-    note(ws, r, 'Las etapas suman exactamente el total: se reparten con el método del mayor residuo. El costo anual usa el inventario requerido del escenario actual.', {italic:true, size:9});
-    footer(ws, r + 1);
-  }
+    /* ===== Inventario por etapa ===== */
+    {
+      const ws = sheet('Inventario por etapa', 'Inventario por etapa', [36, 15, 15, 14, 14, 11, 13, 13, 20]);
+      const per = s => s.d > 0 ? `${String(+s.a0.toFixed(1)).replace('.', ',')}–${String(+s.a1.toFixed(1)).replace('.', ',')}` : 'no aplica';
+      const rows = ra.st.map((s, i) => {
+        const r = rep.inv.rows[i];
+        return [STAGES[i].full, per(s), per(rm.st[i]), s.invR, rm.st[i].invR, r.has ? r.v : '', r.has ? r.dA : '', r.has ? r.dM : '', Math.round(s.cost)];
+      });
+      rows.push(['Total', `0–${String(+ra.ageEnd.toFixed(1)).replace('.', ',')}`, `0–${String(+rm.ageEnd.toFixed(1)).replace('.', ',')}`, ra.IR, rm.IR,
+                 rep.inv.n ? rep.inv.total : '', rep.inv.n ? rep.inv.dA : '', rep.inv.n ? rep.inv.dM : '', Math.round(ra.st.reduce((a, s) => a + s.cost, 0))]);
+      const end = table(ws, 7, [
+        {h:'Etapa', style:(cell, v, i) => { if (i < 5) cell.value = {richText:[{text:'■ ', font:{name:FONT, size:11, color:{argb:'FF' + STAGES[i].color.slice(1)}}}, {text:v, font:{name:FONT, size:10, color:{argb:NAVY}}}]}; }},
+        {h:'Período actual (meses de edad)'}, {h:'Período meta (meses de edad)'},
+        {h:'Requeridas, actual', tint:'a', fmt:F.int}, {h:'Requeridas, meta', tint:'m', fmt:F.int},
+        {h:'Hay hoy', fmt:F.int},
+        {h:'Hoy − actual', fmt:F.signed, color:negRed}, {h:'Hoy − meta', fmt:F.signed, color:negRed},
+        {h:`Costo anual, actual (${rep.sym})`, fmt:money()}
+      ], rows, {total:5});
+      let r = end + 2;
+      if (rep.inv.n) note(ws, r++, `Hoy hay ${rep.inv.total} novillas. Un valor negativo, en rojo, es una etapa con déficit frente a ese escenario.`, {color:NAVY});
+      note(ws, r, 'Las etapas suman exactamente el total: se reparten con el método del mayor residuo. El costo anual usa el inventario requerido del escenario actual.', {italic:true, size:9});
+      footer(ws, r + 1);
+    }
 
-  /* ===== Etapas ===== */
-  {
-    const ws = sheet('Etapas', 'Etapas del levante', [36, 70, 18, 18]);
-    const per = s => s.d > 0 ? `${String(+s.a0.toFixed(1)).replace('.', ',')}–${String(+s.a1.toFixed(1)).replace('.', ',')}` : 'no aplica';
-    const end = table(ws, 7, [
-      {h:'Etapa'}, {h:'A qué período corresponde', align:'left', wrap:true},
-      {h:'Período actual (meses de edad)', tint:'a'}, {h:'Período meta (meses de edad)', tint:'m'}
-    ], STAGES.map((s, i) => Object.assign([s.full, s.desc, per(ra.st[i]), per(rm.st[i])], {__h:30})));
-    footer(ws, end);
-  }
+    /* ===== Etapas ===== */
+    {
+      const ws = sheet('Etapas', 'Etapas del levante', [36, 70, 18, 18]);
+      const per = s => s.d > 0 ? `${String(+s.a0.toFixed(1)).replace('.', ',')}–${String(+s.a1.toFixed(1)).replace('.', ',')}` : 'no aplica';
+      const end = table(ws, 7, [
+        {h:'Etapa'}, {h:'A qué período corresponde', align:'left', wrap:true},
+        {h:'Período actual (meses de edad)', tint:'a'}, {h:'Período meta (meses de edad)', tint:'m'}
+      ], STAGES.map((s, i) => Object.assign([s.full, s.desc, per(ra.st[i]), per(rm.st[i])], {__h:30})));
+      footer(ws, end);
+    }
 
-  /* ===== Diagnóstico ===== */
-  {
-    const ws = sheet('Diagnóstico', 'Diagnóstico frente a referencias', [40, 13, 22, 13, 22, 34]);
-    const fmts = [];
-    const rows = DIAG.map(d => {
-      const va = d.v(ra, rep.S.a), vm = d.v(rm, rep.S.m);
-      const rr = x => d.dec === 0 ? Math.round(x) : Math.round(x * 10) / 10;
-      fmts.push(d.unit === '%' ? (d.dec ? F.pct : F.pct0) : d.unit === 'm' ? F.months : (d.l.startsWith('Balance') ? F.signed : F.int));
-      return [d.l, rr(va), d.st(va, rep.S.a), rr(vm), d.st(vm, rep.S.m), d.ref];
-    });
-    const light = (cell, v) => {
-      cell.value = WORD[v];
-      cell.fill = fill(LIGHT[v]);
-      cell.font = {name:FONT, size:10, bold:true, color:{argb:v === 'y' ? NAVY : 'FFFFFFFF'}};
-      cell.alignment = {horizontal:'center', vertical:'middle'};
-      cell.border = {bottom:thin('FFFFFFFF'), top:thin('FFFFFFFF')};
-    };
-    const end = table(ws, 7, [
-      {h:'Indicador'}, {h:'Actual', tint:'a', fmt:i => fmts[i]}, {h:'Estado, actual', style:light},
-      {h:'Meta', tint:'m', fmt:i => fmts[i]}, {h:'Estado, meta', style:light}, {h:'Referencia', align:'left', wrap:true}
-    ], rows);
-    note(ws, end + 2, 'Semáforo: verde = dentro de la referencia; ámbar = requiere atención; rojo = crítico.', {italic:true, size:9});
-    footer(ws, end + 3);
-  }
+    /* ===== Diagnóstico ===== */
+    {
+      const ws = sheet('Diagnóstico', 'Diagnóstico frente a referencias', [40, 13, 31, 13, 31, 34]);
+      const fmts = [];
+      const rows = DIAG.map(d => {
+        const va = d.v(ra, rep.S.a), vm = d.v(rm, rep.S.m);
+        const rr = x => d.dec === 0 ? Math.round(x) : Math.round(x * 10) / 10;
+        fmts.push(d.unit === '%' ? (d.dec ? F.pct : F.pct0) : d.unit === 'm' ? F.months : (d.l.startsWith('Balance') ? F.signed : F.int));
+        return [d.l, rr(va), d.st(va, rep.S.a), rr(vm), d.st(vm, rep.S.m), d.ref];
+      });
+      const light = LIGHT_STYLE;
+      const end = table(ws, 7, [
+        {h:'Indicador'}, {h:'Actual', tint:'a', fmt:i => fmts[i]}, {h:'Estado, actual', style:light},
+        {h:'Meta', tint:'m', fmt:i => fmts[i]}, {h:'Estado, meta', style:light}, {h:'Referencia', align:'left', wrap:true}
+      ], rows);
+      note(ws, end + 2, 'Semáforo: verde = dentro de la referencia o mejor; ámbar = requiere atención; rojo = crítico.', {italic:true, size:9});
+      footer(ws, end + 3);
+    }
 
-  /* ===== Gráfico ===== */
-  {
-    const ws = sheet('Gráfico', 'Gráfico: actual frente a meta', [14, 14, 14, 14, 14, 14, 14, 14, 14, 14]);
-    const bars = wb.addImage({base64:window.DVC.barChartPng(rep).split(',')[1], extension:'png'});
-    ws.addImage(bars, {tl:{col:0.2, row:6.5}, ext:{width:900, height:450}, editAs:'oneCell'});
-    const pipe = wb.addImage({base64:(await window.DVC.svgToPng(rep.pipeSvg('a'))).split(',')[1], extension:'png'});
-    ws.addImage(pipe, {tl:{col:0.2, row:31}, ext:{width:900, height:262}, editAs:'oneCell'});
-    for (let r = 7; r <= 47; r++) ws.getRow(r).height = 18;
-    note(ws, 48, 'Tubería de levante del escenario actual: el área de cada tramo equivale a las novillas de esa etapa; la línea punteada es la meta.', {italic:true, size:9});
-    footer(ws, 48);
+    /* ===== Gráfico ===== */
+    {
+      const ws = sheet('Gráfico', 'Gráfico: actual frente a meta', [14, 14, 14, 14, 14, 14, 14, 14, 14, 14]);
+      const bars = wb.addImage({base64:window.DVC.barChartPng(rep).split(',')[1], extension:'png'});
+      ws.addImage(bars, {tl:{col:0.2, row:6.5}, ext:{width:900, height:450}, editAs:'oneCell'});
+      const pipe = wb.addImage({base64:(await window.DVC.svgToPng(rep.pipeSvg('a'))).split(',')[1], extension:'png'});
+      ws.addImage(pipe, {tl:{col:0.2, row:31}, ext:{width:900, height:262}, editAs:'oneCell'});
+      for (let r = 7; r <= 47; r++) ws.getRow(r).height = 18;
+      note(ws, 48, 'Tubería de levante del escenario actual: el área de cada tramo equivale a las novillas de esa etapa; la línea punteada es la meta.', {italic:true, size:9});
+      footer(ws, 48);
+    }
   }
 
   const buf = await wb.xlsx.writeBuffer();

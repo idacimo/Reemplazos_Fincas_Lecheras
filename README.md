@@ -11,7 +11,7 @@ ivan.cifuentes@datavet.info · idacimo@gmail.com · WhatsApp (+57) 315 501 0037
 
 | Modo | Para quién | Qué pide |
 |---|---|---|
-| **Rápido** (por defecto) | Ganaderos y público general; pensado para el celular | 3 pasos y 7 preguntas en lenguaje sencillo, con valores típicos ya escritos. Resultado en tarjetas grandes, semáforo y barras por grupo de animales. |
+| **Rápido** (por defecto) | Ganaderos y público general; pensado para el celular | 3 pasos y 8 preguntas en lenguaje sencillo (las vacas secas son opcionales), con valores típicos ya escritos. Resultado en tarjetas grandes, semáforo y barras por grupo de animales. Su PDF y su Excel muestran solo lo preguntado, los resultados y los supuestos usados, sin costos. |
 | **Completo** | Médicos veterinarios, zootecnistas, asesores | Todos los parámetros de los escenarios actual y meta, costos por etapa, cualquier moneda, tubería de levante, tablas detalladas. |
 
 Ambos modos comparten los mismos datos: se puede empezar en Rápido y pasar a Completo sin perder nada. El enlace `…/#completo` abre directamente el modo completo. Los datos se guardan solo en el celular o computador de quien usa la página (no se envían a ningún servidor).
@@ -70,18 +70,22 @@ El servidor de Hostinger donde corre n8n no se toca: el DNS solo indica dónde e
 
 ## Modelo (resumen)
 
-- Vacas totales = vacas en ordeño ÷ [(IEP×30,4 − días secos) ÷ (IEP×30,4)].
+- Vacas totales = vacas en ordeño + vacas secas. Si no se ingresan las vacas secas: vacas en ordeño ÷ [(IEP×30,4 − días secos) ÷ (IEP×30,4)].
+- El intervalo entre partos se puede escribir en meses o en días (más de 40 se toma como días).
 - Reemplazos/año = vacas totales × tasa de descarte.
 - Terneras a criar = reemplazos ÷ supervivencia acumulada del levante.
 - Inventario de cada etapa = terneras que entran × duración/12 × supervivencia media. Gestación fija en 9 meses.
+- Semáforo: un valor mejor que la referencia queda en verde (por ejemplo, IEP menor o primer parto más temprano).
 - Validación: 100 vacas en ordeño, IEP 13,5, 60 días secos, descarte 30 %, pérdidas 5/2/1/3/1 %, EPP 24 → 35,14 reemplazos/año, 39,70 terneras, 72,84 novillas (prueba automática en `tests/unit`).
 - Modo rápido: usa los valores típicos del escenario actual para lo que no pregunta y fija el primer servicio 12 meses antes del primer parto. La meta es el escenario de referencia de la raza.
 
-## Antes de publicar
+## Fuentes y aviso
 
-- Confirmar que las referencias técnicas y textos tomados del cuaderno de NotebookLM no tengan restricciones de derechos de autor.
-- Aviso: la herramienta es de apoyo a la decisión y no reemplaza el criterio del médico veterinario o del zootecnista.
+- La literatura técnica, reunida en un cuaderno de NotebookLM, sirvió de base para construir y validar el modelo y las referencias del semáforo. El aplicativo no incorpora aplicaciones, textos ni contenidos de terceros con derechos de autor; los textos y el cálculo son propios de Datavet.
+- La herramienta es de apoyo a la decisión y no reemplaza el criterio del médico veterinario o del zootecnista.
 
 ## Licencia
 
-Por definir (por ejemplo, «Todos los derechos reservados © Datavet» o una licencia abierta). Las librerías incluidas en `vendor/` conservan sus licencias: ExcelJS (MIT), jsPDF (MIT), jsPDF-AutoTable (MIT) y la fuente Jost (SIL Open Font License).
+© 2026 Datavet — Iván Darío Cifuentes Moreno. **Todos los derechos reservados** (ver [LICENSE](LICENSE)). El uso de la calculadora en línea es libre y gratuito; copiar, modificar, redistribuir o usar comercialmente el código, los textos, el diseño o la marca requiere autorización escrita de Datavet.
+
+Las librerías incluidas en `vendor/` conservan sus licencias (textos en `vendor/LICENSES/`): ExcelJS (MIT), jsPDF (MIT), jsPDF-AutoTable (MIT) y la fuente Jost (SIL Open Font License 1.1).

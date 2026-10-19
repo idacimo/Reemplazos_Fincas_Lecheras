@@ -55,3 +55,39 @@ test('validaciones del modelo', () => {
   const r2 = M.compute({...M.DEF.a, sx:60, cb:50}, M.DEF.sh);
   assert.ok(r2.errs.some(e => e.includes('100 %')));
 });
+
+test('vacas secas: si se ingresan, el hato adulto es ordeño + secas', () => {
+  const est = M.compute(M.DEF.a, M.DEF.sh);
+  assert.equal(est.hasSecas, false);
+  near(est.T, est.secasEst + 100, 1e-9);
+  const r = M.compute({...M.DEF.a, secas:25}, M.DEF.sh);
+  assert.equal(r.hasSecas, true);
+  assert.equal(r.T, 125);
+  assert.equal(r.secas, 25);
+  near(r.C, 125 * 0.28, 1e-9);
+  // vacío o null = se estima como antes (el caso de validación no cambia)
+  near(M.compute({...M.DEF.m, secas:null}, M.DEF.sh).I, 72.84);
+  near(M.compute({...M.DEF.m, secas:''}, M.DEF.sh).I, 72.84);
+});
+
+test('intervalo entre partos escrito en días se convierte a meses', () => {
+  assert.equal(M.iepMonths(410), 13.5);
+  assert.equal(M.iepMonths(390), 12.8);
+  assert.equal(M.iepMonths(13.5), 13.5);
+});
+
+test('semáforo: un valor mejor que la referencia nunca queda en rojo', () => {
+  const st = label => M.DIAG.find(d => d.l === label).st;
+  assert.equal(st('Intervalo entre partos')(12.8), 'g');
+  assert.equal(st('Edad al primer parto')(21, {raza:'Holstein'}), 'g');
+  assert.equal(st('Edad al primer parto')(20, {raza:'Holstein'}), 'g');
+  assert.notEqual(st('Edad al primer parto')(18, {raza:'Holstein'}), 'r');
+  assert.equal(st('Novillas por cada 100 vacas en ordeño')(50), 'g');
+  assert.equal(st('Mortalidad en lactancia')(2), 'g');
+  assert.equal(st('Pérdida acumulada del levante')(4), 'g');
+  assert.notEqual(st('Tasa de descarte anual')(15), 'r');
+  // lo malo sigue alertando
+  assert.equal(st('Intervalo entre partos')(15), 'r');
+  assert.equal(st('Edad al primer parto')(30, {raza:'Holstein'}), 'r');
+  assert.equal(st('Tasa de descarte anual')(45), 'r');
+});

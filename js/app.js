@@ -1,6 +1,6 @@
 /* Plan de reemplazos | Datavet — interfaz (modo rápido y modo completo) */
 'use strict';
-const {STAGES, CURRENCIES, PRESET, DEF, ROWS, COSTROWS, FEM_SX, nf, sgn, toIn, symOf, parse, compute, convertCosts,
+const {STAGES, CURRENCIES, PRESET, DEF, ROWS, COSTROWS, FEM_SX, nf, sgn, toIn, symOf, parse, hasValue, iepMonths, compute, convertCosts,
        SUM, DIAG, WORD} = window.RM;
 
 const STORE = 'datavet-reemplazos-v2';
@@ -18,6 +18,7 @@ const $$ = s => [...document.querySelectorAll(s)];
 const sym = () => symOf(S.sh.mon);
 const money = (x, d = 0) => `${sym()}\u00a0${nf(x, d)}`;
 const pct = x => nf(x * 100, 0) + ' %';
+const showVal = v => hasValue(v) ? toIn(v) : '';   // campos opcionales vacíos
 const esc = s => String(s).replace(/[&<>"]/g, c => ({'&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;'}[c]));
 const today = () => { const d = new Date(); d.setMinutes(d.getMinutes() - d.getTimezoneOffset()); return d.toISOString().slice(0, 10); };
 
@@ -150,7 +151,7 @@ function syncCur(){
 function fillFull(){
   $$('#params [data-k]').forEach(el => {
     const v = S[el.dataset.s][el.dataset.k];
-    el.value = el.tagName === 'SELECT' ? v : toIn(v);
+    el.value = el.tagName === 'SELECT' ? v : showVal(v);
     el.classList.remove('bad');
   });
   syncCur();
@@ -161,6 +162,7 @@ function fillFull(){
 }
 
 function renderFull(ra, rm){
+  [['a', ra], ['m', rm]].forEach(([sc, r]) => { const el = $(`#params [data-s="${sc}"][data-k="secas"]`); if (el) el.placeholder = isFinite(r.secasEst) ? `≈ ${nf(r.secasEst, 0)}` : ''; });
   $('#conv-a').textContent = toIn(+(ra.cv * 100).toFixed(1));
   $('#conv-m').textContent = toIn(+(rm.cv * 100).toFixed(1));
   $('#errors').innerHTML = [...ra.errs.map(e => `<div class="alert"><b>Actual:</b> ${e}</div>`), ...rm.errs.map(e => `<div class="alert"><b>Meta:</b> ${e}</div>`)].join('');
@@ -241,6 +243,8 @@ function paramRows(ra, rm){
     const l = r.u ? `${r.l} (${r.u})` : r.l;
     if (r.type === 'calc') out.push({l, a:toIn(+(ra.cv * 100).toFixed(1)), m:toIn(+(rm.cv * 100).toFixed(1)), va:ra.cv * 100, vm:rm.cv * 100, k:r.k, u:r.u});
     else if (r.type === 'sel') out.push({l, a:S.a[r.k], m:S.m[r.k], va:S.a[r.k], vm:S.m[r.k], k:r.k});
+    else if (r.k === 'secas') out.push({l, a:ra.hasSecas ? nf(S.a.secas, 0) : `Estimadas: ${nf(ra.secas, 0)}`, m:rm.hasSecas ? nf(S.m.secas, 0) : `Estimadas: ${nf(rm.secas, 0)}`,
+                                   va:ra.secas, vm:rm.secas, k:r.k, u:r.u, est:[!ra.hasSecas, !rm.hasSecas]});
     else out.push({l, a:nf(S.a[r.k], S.a[r.k] % 1 ? 1 : 0), m:nf(S.m[r.k], S.m[r.k] % 1 ? 1 : 0), va:S.a[r.k], vm:S.m[r.k], k:r.k, u:r.u});
   });
   out.push({g:`Costo por novilla por día (${sym()})`});
@@ -279,14 +283,14 @@ function semenText(r, p){
 /* ====================================================================== */
 /* Modo rápido                                                            */
 /* ====================================================================== */
-const SIMPLE_KEYS = ['M', 'IEP', 'EPP', 'TD', 'p1', 'sx', 'cb'];
+const SIMPLE_KEYS = ['M', 'secas', 'IEP', 'EPP', 'TD', 'p1', 'sx', 'cb'];
 
 function buildSimple(){
   $('#s-inv-grid').innerHTML = STAGES.map((s, i) =>
     `<div class="inv-row"><span class="sw" style="background:${s.color}"></span><label for="s-real${i}" style="flex:1">${s.simple}<small>${s.simpleDesc}</small></label><input id="s-real${i}" data-sreal="${i}" inputmode="numeric" autocomplete="off" placeholder="–"></div>`).join('');
 }
 function fillSimple(){
-  SIMPLE_KEYS.forEach(k => { const el = $(`#s-${k}`); el.value = toIn(S.a[k]); el.classList.remove('bad'); });
+  SIMPLE_KEYS.forEach(k => { const el = $(`#s-${k}`); el.value = showVal(S.a[k]); el.classList.remove('bad'); });
   $$('#s-raza button').forEach(b => b.setAttribute('aria-checked', b.dataset.raza === S.a.raza ? 'true' : 'false'));
   $$('[data-sreal]').forEach(el => { el.value = real[+el.dataset.sreal]; });
   if (real.some(v => v !== '')) $('#s-inv').open = true;
@@ -295,6 +299,7 @@ function fillSimple(){
 
 /* En el modo rápido solo se pregunta la edad al primer parto; el primer servicio se fija 12 meses antes. */
 function setSimple(k, v){
+  if (k === 'IEP') v = iepMonths(v);
   S.a[k] = v;
   if (k === 'EPP') S.a.serv = Math.max(6, v - 12);
   if (k === 'M') S.m.M = v;
@@ -330,6 +335,10 @@ function goStep(n, focus = true){
 }
 
 function renderSimple(ra, rm){
+  $('#s-secas').placeholder = isFinite(ra.secasEst) ? `≈ ${nf(ra.secasEst, 0)}` : '';
+  $('#h-secas').textContent = isFinite(ra.secasEst)
+    ? `Vacas del hato que no se están ordeñando. Si lo deja vacío, se estiman unas ${nf(ra.secasEst, 0)} según el intervalo entre partos.`
+    : 'Vacas del hato que no se están ordeñando.';
   $('#s-conv').textContent = `Con semen convencional: ${toIn(+(ra.cv * 100).toFixed(0))} de cada 100. El semen sexado da cerca de 90 % de hembras; el convencional, 50 %.`;
   $('#h-EPP').textContent = S.a.raza === 'Jersey' ? 'Edad al primer parto. En Jersey lo ideal es entre 21 y 22 meses.' : 'Edad al primer parto. En Holstein lo ideal es entre 22 y 24 meses.';
   $('#s-errs').innerHTML = ra.errs.map(e => `<div class="alert">${e}</div>`).join('');
@@ -337,7 +346,7 @@ function renderSimple(ra, rm){
 
   const inv = inventory(ra, rm);
   let h = `<div class="r-head">
-    <p>${finca ? esc(finca) + ' · ' : ''}${nf(S.a.M, 0)} vacas en ordeño · ${esc(S.a.raza === 'Otra' ? 'otra raza o cruce' : S.a.raza)}</p>
+    <p>${finca ? esc(finca) + ' · ' : ''}${esc(S.a.raza === 'Otra' ? 'otra raza o cruce' : S.a.raza)} · ${nf(S.a.M, 0)} en ordeño + ${nf(ra.secas, 0)} secas${ra.hasSecas ? '' : ' (estimadas)'} = ${nf(ra.T, 0)} vacas adultas</p>
     <h2>Para sostener su hato, usted necesita:</h2>
     <div class="kpis">
       <div class="kpi hl"><b>${nf(ra.C, 0)}</b><span>novillas que paran cada año</span></div>
@@ -364,16 +373,15 @@ function renderSimple(ra, rm){
   }
 
   // Si llega a la meta
-  const ahorro = ra.annual - rm.annual, dI = ra.IR - rm.IR;
+  const dI = ra.IR - rm.IR;
   h += `<div class="card"><h3>¿Qué gana si llega a la meta?</h3>
     <table class="compare"><thead><tr><th scope="col"></th><th scope="col">Hoy</th><th scope="col">Meta</th></tr></thead><tbody>
       <tr><td>Edad al primer parto</td><td>${nf(S.a.EPP, S.a.EPP % 1 ? 1 : 0)} meses</td><td>${nf(S.m.EPP, 0)} meses</td></tr>
       <tr><td>Intervalo entre partos</td><td>${nf(S.a.IEP, 1)} meses</td><td>${nf(S.m.IEP, 1)} meses</td></tr>
       <tr><td>Muertes antes del destete</td><td>${nf(S.a.p1, 0)} de 100</td><td>${nf(S.m.p1, 0)} de 100</td></tr>
       <tr><td><b>Hembras de levante necesarias</b></td><td><b>${nf(ra.IR, 0)}</b></td><td><b>${nf(rm.IR, 0)}</b></td></tr>
-      <tr><td>Costo del levante al año*</td><td>${money(ra.annual)}</td><td>${money(rm.annual)}</td></tr>
     </tbody></table>
-    <p class="hint" style="margin:10px 0 0">${dI > 0 ? `Con la meta mantendría <b>${nf(dI, 0)} animales menos</b> en levante` : 'Con la meta el levante no se reduce'}${ahorro > 0 ? ` y ahorraría cerca de <b>${money(ahorro)} al año</b>` : ''}. *Con costos de referencia; ajústelos en el análisis completo.</p></div>`;
+    <p class="hint" style="margin:10px 0 0">${dI > 0 ? `Con la meta mantendría <b>${nf(dI, 0)} animales menos</b> en levante` : 'Con la meta el levante no se reduce'}. Los costos del levante se calculan en el análisis completo.</p></div>`;
 
   // Semáforo
   h += `<div class="card"><h3>Semáforo de sus indicadores</h3><ul class="lights">` +
@@ -424,7 +432,45 @@ function report(){
   return {S:clone(S), real:[...real], finca, fecha:$('#fecha').value, fechaTxt:fechaTxt(), mon:S.sh.mon, sym:sym(), mode,
           ra, rm, inv:inventory(ra, rm), params:paramRows(ra, rm), semen:{a:semenText(ra, S.a), m:semenText(rm, S.m)},
           pipeSvg:(which) => which === 'm' ? pipeSvg(rm, ra, 'meta', 'Actual', S.m) : pipeSvg(ra, rm, 'actual', 'Meta', S.a),
-          lead:$('#lead') ? leadText(ra, rm) : ''};
+          lead:$('#lead') ? leadText(ra, rm) : '', simple:simpleReport(ra, rm)};
+}
+
+/* Informe del modo rápido: solo lo que se preguntó, los resultados y los supuestos */
+function simpleReport(ra, rm){
+  const p = S.a, raza = p.raza === 'Otra' ? 'Otra raza o cruce' : p.raza;
+  const entered = [
+    ['Raza principal', raza],
+    ['Vacas en ordeño', nf(p.M, 0)],
+    ['Vacas secas', ra.hasSecas ? nf(p.secas, 0) : `No ingresado (se estiman ${nf(ra.secas, 0)})`],
+    ['Intervalo entre partos', `${nf(p.IEP, p.IEP % 1 ? 1 : 0)} meses`],
+    ['Edad al primer parto', `${nf(p.EPP, p.EPP % 1 ? 1 : 0)} meses`],
+    ['Vacas que salen del hato al año', `${nf(p.TD, p.TD % 1 ? 1 : 0)} de cada 100`],
+    ['Terneras que mueren antes del destete', `${nf(p.p1, p.p1 % 1 ? 1 : 0)} de cada 100`],
+    ['Preñeces con semen sexado', `${nf(p.sx, 0)} de cada 100`],
+    ['Preñeces con semen de carne', `${nf(p.cb, 0)} de cada 100`]
+  ];
+  const inv = inventory(ra, rm);
+  const groups = STAGES.map((st, i) => ({name:st.simple, desc:st.simpleDesc, color:st.color, need:ra.st[i].invR, meta:rm.st[i].invR,
+                                         hoy:inv.rows[i].has ? inv.rows[i].v : null}));
+  const sem = semenText(ra, p);
+  let verdict;
+  if (ra.need > FEM_SX) verdict = {kind:'bad', title:'No le alcanzan las terneras', text:`Nacen ${nf(ra.femR, 0)} terneras hembras al año y necesita ${nf(ra.HR, 0)}. ${sem[2].text}`};
+  else if (ra.bal < -0.05) verdict = {kind:ra.balR <= -3 ? 'bad' : 'warn', title:`Le faltan ${nf(Math.abs(ra.balR), 0)} terneras hembras al año`, text:`Nacen ${nf(ra.femR, 0)} y necesita ${nf(ra.HR, 0)}. ${sem[2].text}`};
+  else verdict = {kind:'ok', title:'Sus vacas producen suficientes terneras', text:`Nacen ${nf(ra.femR, 0)} terneras hembras al año y necesita ${nf(ra.HR, 0)}${ra.balR > 0 ? `: le sobran ${nf(ra.balR, 0)}` : ''}.${ra.bMax > p.cb / 100 + 0.005 ? ` Puede llevar hasta el ${pct(ra.bMax)} de las preñeces a semen de carne.` : ''}`};
+  const invText = inv.n ? (() => { const dA = Math.round(inv.dA);
+    return `Hoy tiene ${nf(inv.total, 0)} hembras de levante${inv.n < 5 ? ` (dato de ${inv.n} de 5 grupos)` : ''}. ` +
+      (dA === 0 ? 'Es justo lo que necesita.' : dA > 0 ? `Le sobran ${nf(dA, 0)} frente a lo que necesita.` : `Le faltan ${nf(-dA, 0)} frente a lo que necesita.`) +
+      ` Si llega a la meta, necesitaría ${nf(rm.IR, 0)}.`; })() : '';
+  const meta = [
+    ['Edad al primer parto', `${nf(p.EPP, p.EPP % 1 ? 1 : 0)} meses`, `${nf(S.m.EPP, 0)} meses`],
+    ['Intervalo entre partos', `${nf(p.IEP, 1)} meses`, `${nf(S.m.IEP, 1)} meses`],
+    ['Terneras que mueren antes del destete', `${nf(p.p1, 0)} de 100`, `${nf(S.m.p1, 0)} de 100`],
+    ['Hembras de levante necesarias', nf(ra.IR, 0), nf(rm.IR, 0)]
+  ];
+  const assumptions = `Valores típicos que el modo rápido no pregunta: ${ra.hasSecas ? '' : `días secos ${nf(p.DS, 0)} (para estimar las vacas secas), `}edad al destete ${toIn(p.dest)} meses, primer servicio a los ${toIn(p.serv)} meses (12 antes del primer parto), pérdidas de las etapas 2 a 5 de ${[p.p2, p.p3, p.p4, p.p5].map(toIn).join(' / ')} % y mortinatos de ${toIn(p.mort)} %. La meta es el escenario de referencia de la raza. Para ajustar estos valores y calcular costos, use el modo completo.`;
+  return {raza, entered, groups, verdict, invText, meta, assumptions, kpis:[[ra.C, 'novillas que deben parir cada año'], [ra.HR, 'terneras hembras para criar cada año'], [ra.IR, 'hembras de levante en la finca, siempre']],
+          herd:`${nf(p.M, 0)} en ordeño + ${nf(ra.secas, 0)} secas${ra.hasSecas ? '' : ' (estimadas)'} = ${nf(ra.T, 0)} vacas adultas`,
+          dI:ra.IR - rm.IR};
 }
 function leadText(ra, rm){
   const dI = rm.IR - ra.IR, dC = rm.annual - ra.annual;
@@ -489,15 +535,22 @@ function bind(){
     const inp = st.querySelector('input');
     const dec = String(inc).includes('.') ? 1 : 0;
     const commit = v => { inp.classList.remove('bad'); setSimple(k, v); render(); };
+    const optional = st.dataset.opt === 'true';
     inp.addEventListener('input', () => {
+      if (optional && inp.value.trim() === '') { commit(null); return; }
       const v = parse(inp.value);
       const ok = isFinite(v) && v >= min && v <= max;
       inp.classList.toggle('bad', !ok);
       if (ok) commit(v);
     });
-    inp.addEventListener('blur', () => { if (!inp.classList.contains('bad')) inp.value = toIn(S.a[k]); });
+    inp.addEventListener('blur', () => {
+      if (inp.classList.contains('bad')) return;
+      if (k === 'IEP' && parse(inp.value) > 40) toast(`${inp.value} días = ${toIn(S.a.IEP)} meses.`);
+      inp.value = showVal(S.a[k]);
+    });
     const bump = d => {
-      const cur = isFinite(parse(inp.value)) ? parse(inp.value) : S.a[k];
+      const est = () => Math.round(compute({...S.a, secas:null}, S.sh).secas);
+      const cur = isFinite(parse(inp.value)) ? parse(inp.value) : (hasValue(S.a[k]) ? S.a[k] : est() - d * inc);
       const v = Math.min(max, Math.max(min, +(Math.round((cur + d * inc) / inc) * inc).toFixed(dec)));
       inp.value = toIn(v); commit(v);
     };
@@ -517,9 +570,18 @@ function bind(){
   pt.addEventListener('input', e => {
     const el = e.target, sc = el.dataset.s, k = el.dataset.k;
     if (!sc || el.tagName === 'SELECT') return;
-    const v = parse(el.value);
+    if (k === 'secas' && el.value.trim() === '') { el.classList.remove('bad'); S[sc].secas = null; render(); return; }
+    let v = parse(el.value);
+    if (k === 'IEP' && isFinite(v)) v = iepMonths(v);
     el.classList.toggle('bad', !isFinite(v));
     if (isFinite(v)) { S[sc][k] = v; render(); }
+  });
+  pt.addEventListener('focusout', e => {
+    const el = e.target;
+    if (el.dataset.k === 'IEP' && parse(el.value) > 40 && !el.classList.contains('bad')) {
+      toast(`${el.value} días = ${toIn(S[el.dataset.s].IEP)} meses.`);
+      el.value = toIn(S[el.dataset.s].IEP);
+    }
   });
   pt.addEventListener('change', e => {
     const el = e.target;

@@ -15,5 +15,13 @@ const files = {
 for (const w of [400, 500, 600, 700]) for (const sub of ['latin', 'latin-ext']) {
   files[`node_modules/@fontsource/jost/files/jost-${sub}-${w}-normal.woff2`] = `vendor/fonts/jost-${sub}-${w}.woff2`;
 }
+/* Licencias de los componentes de terceros */
+Object.assign(files, {
+  'node_modules/exceljs/LICENSE': 'vendor/LICENSES/ExcelJS-MIT.txt',
+  'node_modules/jspdf/LICENSE': 'vendor/LICENSES/jsPDF-MIT.txt',
+  'node_modules/jspdf-autotable/LICENSE.txt': 'vendor/LICENSES/jsPDF-AutoTable-MIT.txt',
+  'node_modules/@expo-google-fonts/jost/LICENSE_FONT': 'vendor/LICENSES/Jost-OFL.txt'
+});
 mkdirSync('vendor/fonts', { recursive: true });
+mkdirSync('vendor/LICENSES', { recursive: true });
 for (const [src, dst] of Object.entries(files)) { cpSync(src, dst); console.log(dst); }
